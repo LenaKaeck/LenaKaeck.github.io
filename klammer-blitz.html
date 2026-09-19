@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Klammer-Blitz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-1:#24402F;
+    --bg-2:#1B3323;
+    --chalk:#F3EFE3;
+    --chalk-dim:#C9D6C4;
+    --yellow:#E8C25B;
+    --coral:#E2836B;
+    --green:#93C08C;
+    --blue:#89B7CB;
+    --rail:#12241A;
+    --shadow: 0 10px 30px rgba(0,0,0,.35);
+    --radius: 14px;
+  }
+  @media (prefers-color-scheme: light){
+    :root:not([data-theme="dark"]){
+      --bg-1:#24402F; --bg-2:#1B3323; --chalk:#F3EFE3;
+    }
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:
+      radial-gradient(circle at 15% 10%, rgba(255,255,255,0.035) 0, transparent 45%),
+      radial-gradient(circle at 85% 90%, rgba(255,255,255,0.03) 0, transparent 40%),
+      linear-gradient(180deg, var(--bg-1), var(--bg-2));
+    font-family:'Space Grotesk', sans-serif;
+    color:var(--chalk);
+    padding:24px;
+    overflow-x:hidden;
+  }
+  .board{
+    width:100%;
+    max-width:720px;
+    position:relative;
+  }
+  .frame{
+    background: repeating-linear-gradient(45deg, #8a5a34, #8a5a34 6px, #7a4c2b 6px, #7a4c2b 12px);
+    border-radius: 22px;
+    padding:10px;
+    box-shadow: var(--shadow);
+  }
+  .panel{
+    background:
+      radial-gradient(ellipse at 30% 0%, rgba(255,255,255,0.05), transparent 60%),
+      var(--bg-1);
+    border-radius:16px;
+    padding:32px 28px 28px;
+    position:relative;
+    min-height:480px;
+    display:flex;
+    flex-direction:column;
+  }
+  .panel::before{
+    content:"";
+    position:absolute; inset:0;
+    border-radius:16px;
+    background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px);
+    background-size: 14px 14px;
+    opacity:.35;
+    pointer-events:none;
+  }
+
+  h1{
+    font-family:'Kalam', cursive;
+    font-weight:700;
+    font-size: clamp(1.8rem, 5vw, 2.6rem);
+    margin:0 0 6px;
+    letter-spacing:.5px;
+    transform: rotate(-0.6deg);
+  }
+  .sub{
+    color:var(--chalk-dim);
+    font-size:.95rem;
+    margin:0 0 20px;
+    max-width:46ch;
+    line-height:1.5;
+  }
+
+  /* --- HUD --- */
+  .hud{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    margin-bottom:18px;
+    position:relative;
+    z-index:1;
+  }
+  .hud-group{display:flex; align-items:center; gap:14px;}
+  .lives{display:flex; gap:4px; font-size:1.2rem;}
+  .life{opacity:1; transition:opacity .25s, transform .25s;}
+  .life.lost{opacity:.18; transform:scale(.8);}
+  .score{
+    font-weight:700; font-size:1.15rem; font-variant-numeric: tabular-nums;
+  }
+  .streak{
+    font-size:.85rem; color:var(--yellow);
+    font-weight:600;
+    min-height:1.2em;
+  }
+
+  .timerwrap{
+    height:8px; border-radius:6px; background:var(--rail);
+    overflow:hidden; margin-bottom:26px; position:relative; z-index:1;
+  }
+  .timerbar{
+    height:100%; width:100%;
+    background: linear-gradient(90deg, var(--green), var(--yellow));
+    border-radius:6px;
+    transform-origin:left;
+  }
+
+  /* --- Question --- */
+  .qwrap{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding: 8px 0 22px;
+    position:relative; z-index:1;
+  }
+  .qlabel{
+    font-size:.78rem;
+    color:var(--chalk-dim);
+    text-transform:none;
+    letter-spacing:.3px;
+    margin-bottom:10px;
+  }
+  .expr{
+    font-family:'Kalam', cursive;
+    font-size: clamp(2.1rem, 7vw, 3.1rem);
+    line-height:1.15;
+    font-weight:700;
+    word-break:break-word;
+  }
+
+  .options{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap:12px;
+    position:relative; z-index:1;
+  }
+  @media (max-width:480px){
+    .options{grid-template-columns:1fr;}
+  }
+  .opt{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:1.05rem;
+    font-weight:600;
+    color:var(--chalk);
+    background: rgba(255,255,255,0.04);
+    border: 1.5px solid rgba(243,239,227,0.28);
+    border-radius: 10px;
+    padding:16px 14px;
+    cursor:pointer;
+    display:flex; align-items:center; gap:10px;
+    transition: background .15s, border-color .15s, transform .1s;
+    text-align:left;
+  }
+  .opt .k{
+    font-size:.75rem; opacity:.65; border:1px solid rgba(243,239,227,0.4);
+    border-radius:5px; padding:1px 6px; flex-shrink:0;
+  }
+  .opt:hover{ background: rgba(255,255,255,0.09); border-color: rgba(243,239,227,0.5); }
+  .opt:active{ transform: scale(.98); }
+  .opt:focus-visible{ outline: 2px solid var(--blue); outline-offset:2px; }
+  .opt.correct{ background: rgba(147,192,140,0.25); border-color: var(--green); }
+  .opt.wrong{ background: rgba(226,131,107,0.25); border-color: var(--coral); }
+  .opt[disabled]{ cursor:default; }
+
+  .feedback{
+    position:absolute; top:-6px; left:50%; transform:translateX(-50%);
+    font-family:'Kalam', cursive; font-weight:700; font-size:1.1rem;
+    color:var(--yellow); opacity:0; pointer-events:none;
+  }
+  .feedback.show{ animation: floatUp .8s ease-out forwards; }
+  @keyframes floatUp{
+    0%{opacity:0; transform:translate(-50%, 6px);}
+    20%{opacity:1;}
+    100%{opacity:0; transform:translate(-50%, -22px);}
+  }
+  .shake{ animation: shake .35s; }
+  @keyframes shake{
+    20%{transform:translateX(-6px);} 40%{transform:translateX(6px);}
+    60%{transform:translateX(-4px);} 80%{transform:translateX(4px);} 100%{transform:translateX(0);}
+  }
+
+  /* --- Screens --- */
+  .screen{
+    flex:1;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; gap:16px; position:relative; z-index:1;
+  }
+  .rules{
+    color:var(--chalk-dim); font-size:.92rem; line-height:1.7; max-width:44ch;
+  }
+  .rules b{ color:var(--chalk); }
+  .btn{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:700; font-size:1.05rem;
+    background: var(--yellow); color:#2B2110;
+    border:none; border-radius: 10px;
+    padding:14px 30px;
+    cursor:pointer;
+    box-shadow: 0 4px 0 #b58f37;
+    transition: transform .08s, box-shadow .08s;
+  }
+  .btn:active{ transform:translateY(3px); box-shadow:0 1px 0 #b58f37; }
+  .btn:focus-visible{ outline:2px solid var(--blue); outline-offset:3px; }
+
+  .resultnum{
+    font-family:'Kalam', cursive; font-weight:700;
+    font-size: clamp(2.6rem, 9vw, 3.6rem);
+    color:var(--yellow);
+    line-height:1;
+  }
+  .resultsub{ color:var(--chalk-dim); font-size:.95rem; }
+
+  .hidden{ display:none !important; }
+
+  @media (prefers-reduced-motion: reduce){
+    .feedback.show, .shake, .life{ animation:none !important; transition:none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="board">
+  <div class="frame">
+    <div class="panel">
+
+      <h1>Klammer-Blitz</h1>
+      <p class="sub">Klammern auflösen &amp; die 1. und 2. binomische Formel &mdash; so viele Aufgaben wie möglich, bevor die Kreide alle ist.</p>
+
+      <!-- START SCREEN -->
+      <div id="startScreen" class="screen">
+        <div class="rules">
+          <b>So funktioniert's:</b> Pro Aufgabe 4 Antworten, eine ist richtig.
+          Je länger deine Serie, desto weniger Zeit bleibt &mdash; und desto mehr Punkte gibt's.
+          Drei falsche Antworten (oder Zeit abgelaufen) und die Kreide ist alle.<br><br>
+          Tastatur: Zahlen <b>1&ndash;4</b> wählen die Antwort.
+        </div>
+        <button class="btn" id="startBtn">Los geht's</button>
+      </div>
+
+      <!-- GAME SCREEN -->
+      <div id="gameScreen" class="hidden" style="display:flex; flex-direction:column; flex:1;">
+        <div class="hud">
+          <div class="hud-group">
+            <div class="lives" id="lives"></div>
+          </div>
+          <div class="hud-group" style="flex-direction:column; align-items:flex-end; gap:2px;">
+            <div class="score" id="score">0 Punkte</div>
+            <div class="streak" id="streak"></div>
+          </div>
+        </div>
+        <div class="timerwrap"><div class="timerbar" id="timerbar"></div></div>
+
+        <div class="qwrap">
+          <div class="feedback" id="feedback"></div>
+          <div class="qlabel" id="qlabel">Vereinfache:</div>
+          <div class="expr" id="expr">&nbsp;</div>
+        </div>
+
+        <div class="options" id="options"></div>
+      </div>
+
+      <!-- END SCREEN -->
+      <div id="endScreen" class="hidden screen">
+        <div class="qlabel">Kreide alle!</div>
+        <div class="resultnum" id="finalScore">0</div>
+        <div class="resultsub" id="finalSub">Punkte erreicht</div>
+        <button class="btn" id="againBtn">Nochmal</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- helpers ----------
+  function randInt(min, max){ return Math.floor(Math.random()*(max-min+1))+min; }
+  function nonZero(min, max){ let n; do{ n = randInt(min,max); } while(n===0); return n; }
+  function signStr(n){ return n>=0 ? '+' : '\u2212'; }
+  function abs(n){ return Math.abs(n); }
+  function coeffStr(n, unit){
+    // n assumed non-zero; returns e.g. "5x", "x", "-x" not used (sign handled separately)
+    const a = abs(n);
+    return (a===1 ? '' : String(a)) + unit;
+  }
+
+  function shuffle(arr){
+    const a = arr.slice();
+    for(let i=a.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [a[i],a[j]] = [a[j],a[i]];
+    }
+    return a;
+  }
+
+  // formats a quadratic-ish trinomial "x^2 [+-] |cx| x [+-] |c0|" with c_x2 fixed = x²
+  function formatTrinomial(cx, c0){
+    let s = 'x\u00B2';
+    if(cx !== 0){
+      s += ' ' + signStr(cx) + ' ' + coeffStr(cx, 'x');
+    }
+    if(c0 !== 0){
+      s += ' ' + signStr(c0) + ' ' + abs(c0);
+    }
+    return s;
+  }
+
+  function formatBinomialTerm(cx, c0){
+    // like "kx + n"  (for k(x+n) type distractors, cx has explicit coefficient incl 1)
+    let s = coeffStr(cx,'x');
+    if(c0 !== 0){ s += ' ' + signStr(c0) + ' ' + abs(c0); }
+    return s;
+  }
+
+  // ---------- question generators ----------
+  // Type A: k(x + n) -> kx + kn
+  function genTypeA(){
+    const k = randInt(2,9);
+    const n = nonZero(-9,9);
+    const prompt = k + '(x ' + signStr(n) + ' ' + abs(n) + ')';
+    const correctVal = {cx:k, c0:k*n};
+    const correct = formatBinomialTerm(correctVal.cx, correctVal.c0);
+
+    const distractors = new Set();
+    distractors.add(formatBinomialTerm(k, n));                 // forgot to multiply n by k
+    distractors.add(formatBinomialTerm(1, k*n));                // forgot to multiply x by k
+    distractors.add(formatBinomialTerm(k, -k*n));               // sign error
+    distractors.add(formatBinomialTerm(k+n, 0).replace(/x$/, 'x')); // odd fallback
+
+    return finalize('Löse die Klammer auf:', prompt, correct, distractors);
+  }
+
+  // Type B: (x+a)(x+b) -> x^2 + (a+b)x + ab
+  function genTypeB(){
+    const a = nonZero(-9,9);
+    let b = nonZero(-9,9);
+    while(b === a) b = nonZero(-9,9);
+    const prompt = '(x ' + signStr(a) + ' ' + abs(a) + ')(x ' + signStr(b) + ' ' + abs(b) + ')';
+    const cx = a+b, c0 = a*b;
+    const correct = formatTrinomial(cx, c0);
+
+    const distractors = new Set();
+    distractors.add(formatTrinomial(0, c0));            // forgot the middle term
+    distractors.add(formatTrinomial(-cx, c0));           // wrong sign on middle term
+    distractors.add(formatTrinomial(cx, cx));            // forgot to multiply for constant
+    distractors.add(formatTrinomial(cx, -c0));           // sign error on constant
+
+    return finalize('Multipliziere aus und vereinfache:', prompt, correct, distractors);
+  }
+
+  // Type C: 1. binomische Formel  (x+a)^2 = x^2 + 2ax + a^2
+  function genTypeC(){
+    const a = nonZero(1,9);
+    const prompt = '(x + ' + a + ')\u00B2';
+    const cx = 2*a, c0 = a*a;
+    const correct = formatTrinomial(cx, c0);
+
+    const distractors = new Set();
+    distractors.add(formatTrinomial(0, c0));         // vergisst mittleren Term
+    distractors.add(formatTrinomial(a, c0));          // vergisst den Faktor 2
+    distractors.add(formatTrinomial(-cx, c0));         // Vorzeichenfehler
+    distractors.add(formatTrinomial(cx, -c0));
+
+    return finalize('Wende die 1. binomische Formel an:', prompt, correct, distractors);
+  }
+
+  // Type D: 2. binomische Formel  (x-a)^2 = x^2 - 2ax + a^2
+  function genTypeD(){
+    const a = nonZero(1,9);
+    const prompt = '(x \u2212 ' + a + ')\u00B2';
+    const cx = -2*a, c0 = a*a;
+    const correct = formatTrinomial(cx, c0);
+
+    const distractors = new Set();
+    distractors.add(formatTrinomial(0, -c0));         // (x-a)(x+a)-Verwechslung
+    distractors.add(formatTrinomial(-a, c0));          // vergisst den Faktor 2
+    distractors.add(formatTrinomial(-cx, c0));         // Vorzeichenfehler (wird zu +)
+    distractors.add(formatTrinomial(0, c0));
+
+    return finalize('Wende die 2. binomische Formel an:', prompt, correct, distractors);
+  }
+
+  function finalize(label, prompt, correct, distractorSet){
+    distractorSet.delete(correct);
+    let pool = Array.from(distractorSet);
+    // top up if we somehow lost duplicates
+    let guard = 0;
+    while(pool.length < 3 && guard < 20){
+      const filler = formatTrinomial(nonZero(-9,9), nonZero(-9,9));
+      if(filler !== correct && pool.indexOf(filler) === -1) pool.push(filler);
+      guard++;
+    }
+    pool = pool.slice(0,3);
+    const options = shuffle([correct, ...pool]);
+    return { label: label, expr: prompt, correct: correct, options: options };
+  }
+
+  const GENERATORS = [genTypeA, genTypeA, genTypeB, genTypeC, genTypeC, genTypeD, genTypeD];
+  function nextQuestion(){
+    const gen = GENERATORS[randInt(0, GENERATORS.length-1)];
+    return gen();
+  }
+
+  // ---------- game state ----------
+  const startScreen = document.getElementById('startScreen');
+  const gameScreen = document.getElementById('gameScreen');
+  const endScreen = document.getElementById('endScreen');
+  const startBtn = document.getElementById('startBtn');
+  const againBtn = document.getElementById('againBtn');
+  const livesEl = document.getElementById('lives');
+  const scoreEl = document.getElementById('score');
+  const streakEl = document.getElementById('streak');
+  const timerbar = document.getElementById('timerbar');
+  const qlabel = document.getElementById('qlabel');
+  const exprEl = document.getElementById('expr');
+  const optionsEl = document.getElementById('options');
+  const feedbackEl = document.getElementById('feedback');
+  const finalScoreEl = document.getElementById('finalScore');
+  const finalSubEl = document.getElementById('finalSub');
+  const panel = document.querySelector('.panel');
+
+  let lives, score, streak, best, current, locked, rafId, startTime, duration;
+
+  function baseDuration(){
+    // starts at 16s, shrinks toward 8s as streak grows
+    return Math.max(8000, 16000 - streak*450);
+  }
+
+  function renderLives(){
+    livesEl.innerHTML = '';
+    for(let i=0;i<3;i++){
+      const span = document.createElement('span');
+      span.className = 'life' + (i >= lives ? ' lost' : '');
+      span.textContent = '\u25CF';
+      livesEl.appendChild(span);
+    }
+  }
+
+  function renderStreak(){
+    streakEl.textContent = streak >= 2 ? ('Serie: ' + streak + (streak>=5 ? ' \uD83D\uDD25' : '')) : '';
+  }
+
+  function showFeedback(text){
+    feedbackEl.textContent = text;
+    feedbackEl.classList.remove('show');
+    void feedbackEl.offsetWidth;
+    feedbackEl.classList.add('show');
+  }
+
+  function startGame(){
+    lives = 3; score = 0; streak = 0; best = 0;
+    startScreen.classList.add('hidden');
+    endScreen.classList.add('hidden');
+    gameScreen.classList.remove('hidden');
+    gameScreen.style.display = 'flex';
+    renderLives();
+    renderStreak();
+    scoreEl.textContent = '0 Punkte';
+    loadQuestion();
+  }
+
+  function loadQuestion(){
+    locked = false;
+    current = nextQuestion();
+    qlabel.textContent = current.label;
+    exprEl.textContent = current.expr;
+    optionsEl.innerHTML = '';
+    current.options.forEach(function(opt, i){
+      const btn = document.createElement('button');
+      btn.className = 'opt';
+      btn.setAttribute('data-answer', opt);
+      const k = document.createElement('span');
+      k.className = 'k';
+      k.textContent = String(i+1);
+      const t = document.createElement('span');
+      t.textContent = opt;
+      btn.appendChild(k);
+      btn.appendChild(t);
+      btn.addEventListener('click', function(){ handleAnswer(opt, btn); });
+      optionsEl.appendChild(btn);
+    });
+    startTimer();
+  }
+
+  function startTimer(){
+    duration = baseDuration();
+    startTime = performance.now();
+    timerbar.style.transition = 'none';
+    timerbar.style.width = '100%';
+    // force reflow then animate
+    void timerbar.offsetWidth;
+    timerbar.style.transition = 'width linear ' + duration + 'ms';
+    requestAnimationFrame(function(){ timerbar.style.width = '0%'; });
+    clearTimeout(rafId);
+    rafId = setTimeout(function(){
+      if(!locked) handleAnswer(null, null);
+    }, duration);
+  }
+
+  function handleAnswer(chosen, btnEl){
+    if(locked) return;
+    locked = true;
+    clearTimeout(rafId);
+    timerbar.style.transition = 'none';
+
+    const correct = current.correct;
+    const buttons = Array.from(optionsEl.children);
+    buttons.forEach(function(b){
+      b.setAttribute('disabled','true');
+      if(b.getAttribute('data-answer') === correct) b.classList.add('correct');
+    });
+
+    if(chosen === correct){
+      streak++; best = Math.max(best, streak);
+      const gained = 10 + streak*2;
+      score += gained;
+      scoreEl.textContent = score + ' Punkte';
+      showFeedback('+' + gained);
+      renderStreak();
+      setTimeout(loadQuestion, 650);
+    } else {
+      if(btnEl) btnEl.classList.add('wrong');
+      streak = 0;
+      renderStreak();
+      lives--;
+      renderLives();
+      panel.classList.remove('shake');
+      void panel.offsetWidth;
+      panel.classList.add('shake');
+      if(lives <= 0){
+        setTimeout(endGame, 750);
+      } else {
+        setTimeout(loadQuestion, 900);
+      }
+    }
+  }
+
+  function endGame(){
+    gameScreen.classList.add('hidden');
+    gameScreen.style.display = 'none';
+    endScreen.classList.remove('hidden');
+    finalScoreEl.textContent = score;
+    finalSubEl.textContent = 'Punkte \u2014 beste Serie: ' + best;
+  }
+
+  document.addEventListener('keydown', function(e){
+    if(gameScreen.classList.contains('hidden')) return;
+    const n = parseInt(e.key, 10);
+    if(n >= 1 && n <= 4){
+      const btn = optionsEl.children[n-1];
+      if(btn && !btn.hasAttribute('disabled')){
+        handleAnswer(btn.getAttribute('data-answer'), btn);
+      }
+    }
+  });
+
+  startBtn.addEventListener('click', startGame);
+  againBtn.addEventListener('click', startGame);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mathe-Spiele</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-1:#24402F;
+    --bg-2:#1B3323;
+    --chalk:#F3EFE3;
+    --chalk-dim:#C9D6C4;
+    --yellow:#E8C25B;
+    --coral:#E2836B;
+    --green:#93C08C;
+    --blue:#89B7CB;
+    --shadow: 0 10px 30px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    min-height:100vh;
+    background:
+      radial-gradient(circle at 15% 10%, rgba(255,255,255,0.035) 0, transparent 45%),
+      radial-gradient(circle at 85% 90%, rgba(255,255,255,0.03) 0, transparent 40%),
+      linear-gradient(180deg, var(--bg-1), var(--bg-2));
+    font-family:'Space Grotesk', sans-serif;
+    color:var(--chalk);
+    padding: 48px 20px;
+  }
+  .wrap{ max-width: 880px; margin: 0 auto; }
+
+  header{ margin-bottom: 40px; }
+  h1{
+    font-family:'Kalam', cursive;
+    font-weight:700;
+    font-size: clamp(2.2rem, 6vw, 3.2rem);
+    margin:0 0 10px;
+    transform: rotate(-0.5deg);
+  }
+  .sub{
+    color:var(--chalk-dim);
+    font-size:1rem;
+    max-width:56ch;
+    line-height:1.6;
+    margin:0;
+  }
+
+  .grid{
+    display:grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 20px;
+  }
+
+  .card{
+    display:flex;
+    flex-direction:column;
+    background: repeating-linear-gradient(45deg, #8a5a34, #8a5a34 6px, #7a4c2b 6px, #7a4c2b 12px);
+    border-radius: 18px;
+    padding: 8px;
+    box-shadow: var(--shadow);
+    text-decoration:none;
+    color:inherit;
+    transition: transform .12s;
+  }
+  .card:hover{ transform: translateY(-3px); }
+  .card:focus-visible{ outline: 2px solid var(--blue); outline-offset:3px; }
+
+  .card-inner{
+    background: radial-gradient(ellipse at 30% 0%, rgba(255,255,255,0.05), transparent 60%), var(--bg-1);
+    border-radius: 12px;
+    padding: 22px 20px;
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    gap: 10px;
+    position:relative;
+    overflow:hidden;
+  }
+  .card-inner::before{
+    content:"";
+    position:absolute; inset:0;
+    background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px);
+    background-size: 14px 14px;
+    opacity:.35;
+    pointer-events:none;
+  }
+
+  .tag{
+    font-size:.72rem;
+    color: var(--bg-1);
+    background: var(--yellow);
+    border-radius: 5px;
+    padding: 2px 8px;
+    align-self:flex-start;
+    font-weight:700;
+    position:relative; z-index:1;
+  }
+  .card h2{
+    font-family:'Kalam', cursive;
+    font-size:1.5rem;
+    margin: 4px 0 0;
+    position:relative; z-index:1;
+  }
+  .card p{
+    color: var(--chalk-dim);
+    font-size:.9rem;
+    line-height:1.5;
+    margin:0;
+    flex:1;
+    position:relative; z-index:1;
+  }
+  .play{
+    font-weight:700;
+    font-size:.9rem;
+    color: var(--yellow);
+    display:flex;
+    align-items:center;
+    gap:6px;
+    position:relative; z-index:1;
+  }
+  .play::after{ content:"→"; transition: transform .12s; }
+  .card:hover .play::after{ transform: translateX(3px); }
+
+  .placeholder{
+    border: 1.5px dashed rgba(243,239,227,0.25);
+    border-radius: 18px;
+    padding: 22px 20px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    color: var(--chalk-dim);
+    font-size:.9rem;
+    min-height: 140px;
+  }
+
+  footer{
+    margin-top: 44px;
+    color: var(--chalk-dim);
+    font-size:.82rem;
+    text-align:center;
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Mathe-Spiele</h1>
+      <p class="sub">Kleine Übungsspiele für die Tafel oder zum Selbstüben &mdash; wird laufend erweitert.</p>
+    </header>
+
+    <div class="grid">
+
+      <a class="card" href="klammer-blitz.html">
+        <div class="card-inner">
+          <span class="tag">Algebra</span>
+          <h2>Klammer-Blitz</h2>
+          <p>Klammern auflösen sowie 1. &amp; 2. binomische Formel &mdash; Multiple-Choice gegen die Zeit, mit Leben und Punkte-Serie.</p>
+          <span class="play">Spielen</span>
+        </div>
+      </a>
+
+      <div class="placeholder">Hier kommt das nächste Spiel hin</div>
+
+    </div>
+
+    <footer>Mathe-Spiele &middot; wird laufend um neue Themen ergänzt</footer>
+  </div>
+</body>
+</html>
