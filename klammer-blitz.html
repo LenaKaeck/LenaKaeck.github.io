@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Klammer-Blitz</title>
+<title>Binom-Blitz</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -234,6 +234,23 @@
 
   .hidden{ display:none !important; }
 
+  .nextbtn{ margin: 16px auto 0; display:block; }
+
+  .leaderboard{ width:100%; max-width: 320px; margin: 4px auto 0; text-align:left; }
+  .leaderboard h3{
+    font-family:'Kalam', cursive; font-size:1rem; margin:0 0 8px;
+    text-align:center; color:var(--yellow); font-weight:700;
+  }
+  .leaderboard ol{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px; }
+  .leaderboard li{
+    display:flex; justify-content:space-between; align-items:center;
+    background: rgba(255,255,255,0.04);
+    border:1px solid rgba(243,239,227,0.15);
+    border-radius:8px; padding:7px 12px; font-size:.9rem;
+  }
+  .leaderboard li .rank{ opacity:.7; margin-right:8px; }
+  .leaderboard .empty{ text-align:center; color:var(--chalk-dim); font-size:.85rem; }
+
   @media (prefers-reduced-motion: reduce){
     .feedback.show, .shake, .life{ animation:none !important; transition:none !important; }
   }
@@ -245,14 +262,14 @@
   <div class="frame">
     <div class="panel">
 
-      <h1>Klammer-Blitz</h1>
-      <p class="sub">Klammern auflösen &amp; die 1. und 2. binomische Formel &mdash; so viele Aufgaben wie möglich, bevor die Kreide alle ist.</p>
+      <h1>Binom-Blitz</h1>
+      <p class="sub">Löse Aufgaben zur 1. und 2. binomischen Formel &mdash; so viele Aufgaben wie möglich, bevor die Kreide alle ist.</p>
 
       <!-- START SCREEN -->
       <div id="startScreen" class="screen">
         <div class="rules">
-          <b>So funktioniert's:</b> Pro Aufgabe 4 Antworten, eine ist richtig.
-          Je länger deine Serie, desto weniger Zeit bleibt &mdash; und desto mehr Punkte gibt's.
+          <b>So funktioniert's:</b> Aufgaben zur 1. und 2. binomischen Formel, 4 Antworten, eine ist richtig.
+          Am Anfang hast du genug Zeit zum Nachdenken &mdash; je länger deine Serie, desto knapper wird sie, und desto mehr Punkte gibt's.
           Drei falsche Antworten (oder Zeit abgelaufen) und die Kreide ist alle.<br><br>
           Tastatur: Zahlen <b>1&ndash;4</b> wählen die Antwort.
         </div>
@@ -279,6 +296,7 @@
         </div>
 
         <div class="options" id="options"></div>
+        <button class="btn nextbtn hidden" id="nextBtn">Weiter</button>
       </div>
 
       <!-- END SCREEN -->
@@ -286,6 +304,7 @@
         <div class="qlabel">Kreide alle!</div>
         <div class="resultnum" id="finalScore">0</div>
         <div class="resultsub" id="finalSub">Punkte erreicht</div>
+        <div class="leaderboard" id="roundHistory"></div>
         <button class="btn" id="againBtn">Nochmal</button>
       </div>
 
@@ -317,109 +336,142 @@
     return a;
   }
 
-  // formats a quadratic-ish trinomial "x^2 [+-] |cx| x [+-] |c0|" with c_x2 fixed = x²
-  function formatTrinomial(cx, c0){
-    let s = 'x\u00B2';
-    if(cx !== 0){
-      s += ' ' + signStr(cx) + ' ' + coeffStr(cx, 'x');
-    }
-    if(c0 !== 0){
-      s += ' ' + signStr(c0) + ' ' + abs(c0);
-    }
-    return s;
+  // Genereller Formatierer: terms = [{coef, unit}], unit '' für die Konstante.
+  // Erstes Element ist der führende Term (Vorzeichen wird nur bei negativ vorangestellt).
+  function polyStr(terms){
+    let result = '';
+    let first = true;
+    terms.forEach(function(t){
+      if(t.coef === 0) return;
+      const magnitude = abs(t.coef);
+      const term = t.unit === '' ? String(magnitude) : coeffStr(magnitude, t.unit);
+      if(first){
+        result += (t.coef < 0 ? '\u2212 ' : '') + term;
+        first = false;
+      } else {
+        result += ' ' + signStr(t.coef) + ' ' + term;
+      }
+    });
+    return result || '0';
   }
 
-  function formatBinomialTerm(cx, c0){
-    // like "kx + n"  (for k(x+n) type distractors, cx has explicit coefficient incl 1)
-    let s = coeffStr(cx,'x');
-    if(c0 !== 0){ s += ' ' + signStr(c0) + ' ' + abs(c0); }
-    return s;
+  // a zwischen 1-20, b zwischen 1-20 - aber wenn a > 10, dann b nur 1-9
+  function randAB(){
+    const a = randInt(1,20);
+    const b = a > 10 ? randInt(1,9) : randInt(1,20);
+    return { a: a, b: b };
+  }
+
+  // ---------- Distraktor-Erzeugung ----------
+  // terms = [führender Term, mittlerer Term, konstanter Term], je {coef, unit}
+  function cloneTerms(terms){ return terms.map(function(t){ return { coef: t.coef, unit: t.unit }; }); }
+  function withTermCoef(terms, index, newCoef){ const c = cloneTerms(terms); c[index].coef = newCoef; return c; }
+
+  const SMALL_DELTAS = [-6,-5,-4,-3,-2,-1,1,2,3,4,5,6];
+  function randDelta(){ return SMALL_DELTAS[randInt(0, SMALL_DELTAS.length-1)]; }
+
+  // Baut einen Pool unterschiedlicher falscher Lösungen: klassische Rechenfehler
+  // (Term vergessen, Vorzeichen, Faktor 2) GEMISCHT mit zufälligen kleinen Abweichungen
+  // (mal Quadratzahl -4, mal mittlerer Term etwas zu klein/groß) - damit kein festes
+  // Muster erkennbar ist. extraTerms: weitere aufgabenspezifische Fehlerkandidaten (Array von terms).
+  function buildDistractorPool(terms, extraTerms){
+    const correctStr = polyStr(terms);
+    const pool = new Set();
+    function tryAdd(candidateTerms){
+      const s = polyStr(candidateTerms);
+      if(s !== correctStr) pool.add(s);
+    }
+
+    tryAdd(withTermCoef(terms, 1, 0));                                   // mittleren Term vergessen
+    tryAdd(withTermCoef(terms, 1, -terms[1].coef));                      // Vorzeichenfehler beim mittleren Term
+    tryAdd(withTermCoef(terms, 1, Math.round(terms[1].coef / 2) || 1));  // Faktor 2 vergessen
+    tryAdd(withTermCoef(terms, 2, -terms[2].coef));                      // Vorzeichenfehler bei der Konstante
+
+    if(extraTerms){ extraTerms.forEach(tryAdd); }
+
+    // zufällige kleine Abweichungen an einem der drei Terme ("ein bisschen zu wenig/zu viel")
+    let guard = 0;
+    while(pool.size < 6 && guard < 40){
+      const idx = randInt(0,2);
+      tryAdd(withTermCoef(terms, idx, terms[idx].coef + randDelta()));
+      guard++;
+    }
+
+    return Array.from(pool);
+  }
+
+  function finalize(label, prompt, correct, pool){
+    const distractors = shuffle(pool).slice(0,3);
+    const options = shuffle([correct, ...distractors]);
+    return { label: label, expr: prompt, correct: correct, options: options };
   }
 
   // ---------- question generators ----------
-  // Type A: k(x + n) -> kx + kn
-  function genTypeA(){
-    const k = randInt(2,9);
-    const n = nonZero(-9,9);
-    const prompt = k + '(x ' + signStr(n) + ' ' + abs(n) + ')';
-    const correctVal = {cx:k, c0:k*n};
-    const correct = formatBinomialTerm(correctVal.cx, correctVal.c0);
-
-    const distractors = new Set();
-    distractors.add(formatBinomialTerm(k, n));                 // forgot to multiply n by k
-    distractors.add(formatBinomialTerm(1, k*n));                // forgot to multiply x by k
-    distractors.add(formatBinomialTerm(k, -k*n));               // sign error
-    distractors.add(formatBinomialTerm(k+n, 0).replace(/x$/, 'x')); // odd fallback
-
-    return finalize('Löse die Klammer auf:', prompt, correct, distractors);
-  }
-
-  // Type B: (x+a)(x+b) -> x^2 + (a+b)x + ab
-  function genTypeB(){
-    const a = nonZero(-9,9);
-    let b = nonZero(-9,9);
-    while(b === a) b = nonZero(-9,9);
-    const prompt = '(x ' + signStr(a) + ' ' + abs(a) + ')(x ' + signStr(b) + ' ' + abs(b) + ')';
-    const cx = a+b, c0 = a*b;
-    const correct = formatTrinomial(cx, c0);
-
-    const distractors = new Set();
-    distractors.add(formatTrinomial(0, c0));            // forgot the middle term
-    distractors.add(formatTrinomial(-cx, c0));           // wrong sign on middle term
-    distractors.add(formatTrinomial(cx, cx));            // forgot to multiply for constant
-    distractors.add(formatTrinomial(cx, -c0));           // sign error on constant
-
-    return finalize('Multipliziere aus und vereinfache:', prompt, correct, distractors);
-  }
-
   // Type C: 1. binomische Formel  (x+a)^2 = x^2 + 2ax + a^2
   function genTypeC(){
-    const a = nonZero(1,9);
+    const a = randInt(1,20);
+    const terms = [{coef:1, unit:'x\u00B2'}, {coef:2*a, unit:'x'}, {coef:a*a, unit:''}];
     const prompt = '(x + ' + a + ')\u00B2';
-    const cx = 2*a, c0 = a*a;
-    const correct = formatTrinomial(cx, c0);
-
-    const distractors = new Set();
-    distractors.add(formatTrinomial(0, c0));         // vergisst mittleren Term
-    distractors.add(formatTrinomial(a, c0));          // vergisst den Faktor 2
-    distractors.add(formatTrinomial(-cx, c0));         // Vorzeichenfehler
-    distractors.add(formatTrinomial(cx, -c0));
-
-    return finalize('Wende die 1. binomische Formel an:', prompt, correct, distractors);
+    const correct = polyStr(terms);
+    const pool = buildDistractorPool(terms);
+    return finalize('Wende die 1. binomische Formel an:', prompt, correct, pool);
   }
 
   // Type D: 2. binomische Formel  (x-a)^2 = x^2 - 2ax + a^2
   function genTypeD(){
-    const a = nonZero(1,9);
+    const a = randInt(1,20);
+    const terms = [{coef:1, unit:'x\u00B2'}, {coef:-2*a, unit:'x'}, {coef:a*a, unit:''}];
     const prompt = '(x \u2212 ' + a + ')\u00B2';
-    const cx = -2*a, c0 = a*a;
-    const correct = formatTrinomial(cx, c0);
-
-    const distractors = new Set();
-    distractors.add(formatTrinomial(0, -c0));         // (x-a)(x+a)-Verwechslung
-    distractors.add(formatTrinomial(-a, c0));          // vergisst den Faktor 2
-    distractors.add(formatTrinomial(-cx, c0));         // Vorzeichenfehler (wird zu +)
-    distractors.add(formatTrinomial(0, c0));
-
-    return finalize('Wende die 2. binomische Formel an:', prompt, correct, distractors);
+    const correct = polyStr(terms);
+    const pool = buildDistractorPool(terms);
+    return finalize('Wende die 2. binomische Formel an:', prompt, correct, pool);
   }
 
-  function finalize(label, prompt, correct, distractorSet){
-    distractorSet.delete(correct);
-    let pool = Array.from(distractorSet);
-    // top up if we somehow lost duplicates
-    let guard = 0;
-    while(pool.length < 3 && guard < 20){
-      const filler = formatTrinomial(nonZero(-9,9), nonZero(-9,9));
-      if(filler !== correct && pool.indexOf(filler) === -1) pool.push(filler);
-      guard++;
-    }
-    pool = pool.slice(0,3);
-    const options = shuffle([correct, ...pool]);
-    return { label: label, expr: prompt, correct: correct, options: options };
+  // Type E: (ax+b)^2 = a^2x^2 + 2abx + b^2
+  function genTypeE(){
+    const ab = randAB(), a = ab.a, b = ab.b;
+    const terms = [{coef:a*a, unit:'x\u00B2'}, {coef:2*a*b, unit:'x'}, {coef:b*b, unit:''}];
+    const prompt = '(' + coeffStr(a,'x') + ' + ' + b + ')\u00B2';
+    const correct = polyStr(terms);
+    const extra = [ withTermCoef(terms, 0, a), withTermCoef(terms, 2, b) ]; // a bzw. b nicht quadriert
+    const pool = buildDistractorPool(terms, extra);
+    return finalize('Wende die 1. binomische Formel an:', prompt, correct, pool);
   }
 
-  const GENERATORS = [genTypeA, genTypeA, genTypeB, genTypeC, genTypeC, genTypeD, genTypeD];
+  // Type F: (ax-b)^2 = a^2x^2 - 2abx + b^2
+  function genTypeF(){
+    const ab = randAB(), a = ab.a, b = ab.b;
+    const terms = [{coef:a*a, unit:'x\u00B2'}, {coef:-2*a*b, unit:'x'}, {coef:b*b, unit:''}];
+    const prompt = '(' + coeffStr(a,'x') + ' \u2212 ' + b + ')\u00B2';
+    const correct = polyStr(terms);
+    const extra = [ withTermCoef(terms, 0, a), withTermCoef(terms, 2, b) ];
+    const pool = buildDistractorPool(terms, extra);
+    return finalize('Wende die 2. binomische Formel an:', prompt, correct, pool);
+  }
+
+  // Type G: (ax+by)^2 = a^2x^2 + 2abxy + b^2y^2
+  function genTypeG(){
+    const ab = randAB(), a = ab.a, b = ab.b;
+    const terms = [{coef:a*a, unit:'x\u00B2'}, {coef:2*a*b, unit:'xy'}, {coef:b*b, unit:'y\u00B2'}];
+    const prompt = '(' + coeffStr(a,'x') + ' + ' + coeffStr(b,'y') + ')\u00B2';
+    const correct = polyStr(terms);
+    const extra = [ withTermCoef(terms, 0, a), withTermCoef(terms, 2, b) ];
+    const pool = buildDistractorPool(terms, extra);
+    return finalize('Wende die 1. binomische Formel an:', prompt, correct, pool);
+  }
+
+  // Type H: (ax-by)^2 = a^2x^2 - 2abxy + b^2y^2
+  function genTypeH(){
+    const ab = randAB(), a = ab.a, b = ab.b;
+    const terms = [{coef:a*a, unit:'x\u00B2'}, {coef:-2*a*b, unit:'xy'}, {coef:b*b, unit:'y\u00B2'}];
+    const prompt = '(' + coeffStr(a,'x') + ' \u2212 ' + coeffStr(b,'y') + ')\u00B2';
+    const correct = polyStr(terms);
+    const extra = [ withTermCoef(terms, 0, a), withTermCoef(terms, 2, b) ];
+    const pool = buildDistractorPool(terms, extra);
+    return finalize('Wende die 2. binomische Formel an:', prompt, correct, pool);
+  }
+
+  const GENERATORS = [genTypeC, genTypeD, genTypeE, genTypeF, genTypeG, genTypeH];
   function nextQuestion(){
     const gen = GENERATORS[randInt(0, GENERATORS.length-1)];
     return gen();
@@ -438,16 +490,34 @@
   const qlabel = document.getElementById('qlabel');
   const exprEl = document.getElementById('expr');
   const optionsEl = document.getElementById('options');
+  const nextBtn = document.getElementById('nextBtn');
   const feedbackEl = document.getElementById('feedback');
   const finalScoreEl = document.getElementById('finalScore');
   const finalSubEl = document.getElementById('finalSub');
   const panel = document.querySelector('.panel');
+  const roundHistoryEl = document.getElementById('roundHistory');
 
   let lives, score, streak, best, current, locked, rafId, startTime, duration;
 
+  // ---------- Rundenverlauf dieser Sitzung (nicht gespeichert, weg beim Schließen/Neuladen) ----------
+  let roundHistory = [];
+
+  function renderRoundHistory(el){
+    if(!el) return;
+    if(!roundHistory.length){ el.innerHTML = ''; return; }
+    const bestScore = Math.max.apply(null, roundHistory.map(function(r){ return r.score; }));
+    let html = '<h3>Deine Runden</h3><ol>';
+    roundHistory.forEach(function(r){
+      const star = r.score === bestScore ? ' \u2b50' : '';
+      html += '<li><span class="rank">Runde ' + r.round + '</span><span>' + r.score + ' Punkte' + star + '</span></li>';
+    });
+    html += '</ol>';
+    el.innerHTML = html;
+  }
+
   function baseDuration(){
-    // starts at 16s, shrinks toward 8s as streak grows
-    return Math.max(8000, 16000 - streak*450);
+    // starts at 35s, sinkt um 1s pro Serie, bis minimal 12s
+    return Math.max(12000, 35000 - streak*1000);
   }
 
   function renderLives(){
@@ -485,6 +555,7 @@
 
   function loadQuestion(){
     locked = false;
+    nextBtn.classList.add('hidden');
     current = nextQuestion();
     qlabel.textContent = current.label;
     exprEl.textContent = current.expr;
@@ -551,11 +622,8 @@
       panel.classList.remove('shake');
       void panel.offsetWidth;
       panel.classList.add('shake');
-      if(lives <= 0){
-        setTimeout(endGame, 750);
-      } else {
-        setTimeout(loadQuestion, 900);
-      }
+      nextBtn.textContent = (lives <= 0) ? 'Ergebnis ansehen' : 'Weiter';
+      nextBtn.classList.remove('hidden');
     }
   }
 
@@ -565,10 +633,16 @@
     endScreen.classList.remove('hidden');
     finalScoreEl.textContent = score;
     finalSubEl.textContent = 'Punkte \u2014 beste Serie: ' + best;
+    roundHistory.push({ round: roundHistory.length + 1, score: score });
+    renderRoundHistory(roundHistoryEl);
   }
 
   document.addEventListener('keydown', function(e){
     if(gameScreen.classList.contains('hidden')) return;
+    if(e.key === 'Enter' && !nextBtn.classList.contains('hidden')){
+      nextBtn.click();
+      return;
+    }
     const n = parseInt(e.key, 10);
     if(n >= 1 && n <= 4){
       const btn = optionsEl.children[n-1];
@@ -576,6 +650,11 @@
         handleAnswer(btn.getAttribute('data-answer'), btn);
       }
     }
+  });
+
+  nextBtn.addEventListener('click', function(){
+    nextBtn.classList.add('hidden');
+    if(lives <= 0){ endGame(); } else { loadQuestion(); }
   });
 
   startBtn.addEventListener('click', startGame);
