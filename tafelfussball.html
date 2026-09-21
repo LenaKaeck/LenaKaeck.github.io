@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tafelfußball</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-1:#24402F;
+    --bg-2:#1B3323;
+    --chalk:#F3EFE3;
+    --chalk-dim:#C9D6C4;
+    --yellow:#E8C25B;
+    --coral:#E2836B;
+    --green:#93C08C;
+    --blue:#89B7CB;
+    --shadow: 0 10px 30px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:
+      radial-gradient(circle at 15% 10%, rgba(255,255,255,0.035) 0, transparent 45%),
+      radial-gradient(circle at 85% 90%, rgba(255,255,255,0.03) 0, transparent 40%),
+      linear-gradient(180deg, var(--bg-1), var(--bg-2));
+    font-family:'Space Grotesk', sans-serif;
+    color:var(--chalk);
+    padding:24px;
+  }
+  .board-wrap{ width:100%; max-width:1000px; }
+  .frame{
+    background: repeating-linear-gradient(45deg, #8a5a34, #8a5a34 6px, #7a4c2b 6px, #7a4c2b 12px);
+    border-radius: 22px;
+    padding:10px;
+    box-shadow: var(--shadow);
+  }
+  .panel{
+    background:
+      radial-gradient(ellipse at 30% 0%, rgba(255,255,255,0.05), transparent 60%),
+      var(--bg-1);
+    border-radius:16px;
+    padding:30px 26px 28px;
+    position:relative;
+  }
+  .panel::before{
+    content:"";
+    position:absolute; inset:0;
+    border-radius:16px;
+    background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px);
+    background-size: 14px 14px;
+    opacity:.35;
+    pointer-events:none;
+  }
+
+  a.back{
+    position:relative; z-index:1;
+    color:var(--chalk-dim); text-decoration:none; font-size:.85rem;
+    display:inline-flex; align-items:center; gap:6px; margin-bottom:14px;
+  }
+  a.back:hover{ color:var(--chalk); }
+  a.back::before{ content:"←"; }
+
+  h1{
+    font-family:'Kalam', cursive;
+    font-weight:700;
+    font-size: clamp(1.8rem, 5vw, 2.6rem);
+    margin:0 0 20px;
+    transform: rotate(-0.6deg);
+    position:relative; z-index:1;
+  }
+
+  /* --- Anzeigetafel --- */
+  .scores{
+    display:flex; align-items:stretch; gap:10px; margin-bottom:16px; position:relative; z-index:1;
+  }
+  .scorecard{
+    flex:1;
+    background: rgba(255,255,255,0.04);
+    border:1.5px solid rgba(243,239,227,0.18);
+    border-radius:12px;
+    padding:10px 10px 8px;
+    text-align:center;
+    transition: border-color .15s, background .15s;
+  }
+  .scorecard.a{ border-color: rgba(137,183,203,.55); }
+  .scorecard.b{ border-color: rgba(226,131,107,.55); }
+  .scorecard.attack{ background: rgba(232,194,91,0.1); border-color: var(--yellow); }
+  .scorecard input{
+    width:100%;
+    background:transparent;
+    border:none;
+    border-bottom:1.5px dashed rgba(243,239,227,0.3);
+    font-family:'Kalam', cursive; font-weight:700; font-size:1.25rem;
+    text-align:center;
+    padding:0 0 2px;
+    border-radius:0;
+  }
+  .scorecard.a input{ color: var(--blue); }
+  .scorecard.b input{ color: var(--coral); }
+  .scorecard input:focus-visible{ outline:2px solid var(--yellow); outline-offset:3px; border-bottom-color:transparent; }
+  .scorecard .n{ font-weight:700; font-size:2.2rem; line-height:1.15; margin-top:4px; font-variant-numeric: tabular-nums; }
+  .scorecard .lbl{ font-size:.68rem; color:var(--chalk-dim); }
+  .scorecard .n.bump{ animation: pop .45s ease-out; }
+  .colon{
+    align-self:center; font-family:'Kalam', cursive; font-weight:700; font-size:2rem; color:var(--chalk-dim);
+  }
+
+  /* --- Stadion --- */
+  .pitch-wrap{
+    position:relative; z-index:1;
+    border-radius:16px;
+    overflow:hidden;
+    box-shadow: 0 8px 24px rgba(0,0,0,.4);
+    margin-bottom:20px;
+    line-height:0;
+  }
+  .pitch-wrap svg{ width:100%; height:auto; display:block; }
+  #ballPos{ transition: transform .7s cubic-bezier(.25,.8,.3,1); }
+  #ballSpin{ transition: transform .7s cubic-bezier(.25,.8,.3,1); }
+  .stands.cheer{ animation: crowd .45s ease-in-out 7; }
+  .goal.hit{ animation: goalhit .3s ease-in-out 8; }
+  @keyframes crowd{
+    0%,100%{ transform:translateY(0); filter:brightness(1); }
+    50%{ transform:translateY(-4px); filter:brightness(1.7); }
+  }
+  @keyframes goalhit{
+    0%,100%{ transform:translateX(0); }
+    25%{ transform:translateX(-3px); }
+    75%{ transform:translateX(3px); }
+  }
+
+  /* --- Torjubel --- */
+  .celebrate{
+    position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    background: radial-gradient(ellipse at center, color-mix(in srgb, var(--team, #E8C25B) 40%, transparent), rgba(0,0,0,.25) 75%);
+    animation: fadein .25s ease-out;
+    pointer-events:none;
+    overflow:hidden;
+  }
+  .celebrate[hidden]{ display:none; }
+  .banner{ text-align:center; line-height:1.1; animation: banner .6s cubic-bezier(.2,1.4,.4,1) both; }
+  .banner .tor{
+    font-family:'Kalam', cursive; font-weight:700;
+    font-size: clamp(2.6rem, 14vw, 7rem);
+    color:var(--yellow);
+    text-shadow: 0 4px 0 #8a5a34, 0 8px 24px rgba(0,0,0,.55);
+    transform: rotate(-4deg);
+  }
+  .banner .who{
+    font-family:'Kalam', cursive; font-weight:700;
+    font-size: clamp(1.1rem, 4.5vw, 2rem);
+    color:var(--chalk);
+    text-shadow: 0 2px 10px rgba(0,0,0,.7);
+    margin-top:4px;
+  }
+  .banner .who span{ color: var(--team, var(--yellow)); filter: brightness(1.15); }
+  .confetti{ position:absolute; inset:0; }
+  .confetti i{
+    position:absolute; top:-6%;
+    width:9px; height:14px; border-radius:2px;
+    animation: fall var(--d) linear var(--delay) forwards;
+  }
+  @keyframes fall{
+    0%{ top:-6%; transform: translateX(0) rotate(0); }
+    100%{ top:106%; transform: translateX(var(--dx)) rotate(var(--rot)); }
+  }
+  @keyframes banner{
+    0%{ transform:scale(.3) rotate(-10deg); opacity:0; }
+    100%{ transform:scale(1) rotate(0); opacity:1; }
+  }
+  @keyframes fadein{ from{ opacity:0; } to{ opacity:1; } }
+  @keyframes pop{ 0%{ transform:scale(.5); opacity:.4; } 60%{ transform:scale(1.35); } 100%{ transform:scale(1); opacity:1; } }
+
+  /* --- Bedienung --- */
+  .actions{
+    display:flex; gap:12px; justify-content:space-between; flex-wrap:wrap;
+    position:relative; z-index:1;
+  }
+  .btn{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:700; font-size:.95rem;
+    background: var(--yellow); color:#2B2110;
+    border:none; border-radius: 10px;
+    padding:12px 24px;
+    cursor:pointer;
+    box-shadow: 0 4px 0 #b58f37;
+    transition: transform .08s, box-shadow .08s, opacity .15s;
+  }
+  .btn:active:not(:disabled){ transform:translateY(3px); box-shadow:0 1px 0 #b58f37; }
+  .btn:focus-visible{ outline:2px solid var(--chalk); outline-offset:3px; }
+  .btn:disabled{ opacity:.45; cursor:default; }
+  .btn.team{ flex:1; min-width:200px; font-size:1.05rem; padding:16px 20px; }
+  .btn.team.a{ background:var(--blue); box-shadow:0 4px 0 #5f8ea3; }
+  .btn.team.b{ background:var(--coral); box-shadow:0 4px 0 #b5614b; }
+  .btn.team.a:active:not(:disabled){ box-shadow:0 1px 0 #5f8ea3; }
+  .btn.team.b:active:not(:disabled){ box-shadow:0 1px 0 #b5614b; }
+  .btn.ghost{
+    background:transparent; color:var(--chalk);
+    border:1.5px solid rgba(243,239,227,0.3);
+    box-shadow:none; font-weight:600;
+  }
+  .btn.ghost:active:not(:disabled){ transform:translateY(1px); }
+  .extras{
+    display:flex; gap:10px; justify-content:center; flex-wrap:wrap;
+    margin-top:14px; position:relative; z-index:1;
+  }
+
+  @media (max-width:520px){
+    .panel{ padding:24px 16px 22px; }
+    .scorecard input{ font-size:1.05rem; }
+    .btn.team{ min-width:100%; }
+  }
+  @media (prefers-reduced-motion: reduce){
+    #ballPos, #ballSpin{ transition:none; }
+    .stands.cheer, .goal.hit, .banner, .celebrate, .scorecard .n.bump{ animation:none; }
+    .confetti{ display:none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="board-wrap">
+  <div class="frame">
+    <div class="panel">
+      <a class="back" href="index.html">Zurück zur Übersicht</a>
+      <h1>Tafelfußball</h1>
+
+      <div class="scores">
+        <div class="scorecard a" id="cardA">
+          <input id="nameA" type="text" value="Team Blau" maxlength="16" aria-label="Name von Team 1 (links)">
+          <div class="n" id="scoreA">0</div>
+          <div class="lbl">Tore</div>
+        </div>
+        <div class="colon" aria-hidden="true">:</div>
+        <div class="scorecard b" id="cardB">
+          <input id="nameB" type="text" value="Team Rot" maxlength="16" aria-label="Name von Team 2 (rechts)">
+          <div class="n" id="scoreB">0</div>
+          <div class="lbl">Tore</div>
+        </div>
+      </div>
+
+      <div class="pitch-wrap" id="pitchWrap">
+        <svg viewBox="0 0 1000 620" role="img" aria-label="Fußballstadion von oben mit Ball auf dem Spielfeld">
+          <defs>
+            <pattern id="crowd" width="14" height="14" patternUnits="userSpaceOnUse">
+              <rect width="14" height="14" fill="#1a2f22"/>
+              <circle cx="3.5" cy="3.5" r="2.6" fill="#E2836B" opacity=".55"/>
+              <circle cx="10.5" cy="3.5" r="2.6" fill="#89B7CB" opacity=".55"/>
+              <circle cx="3.5" cy="10.5" r="2.6" fill="#E8C25B" opacity=".5"/>
+              <circle cx="10.5" cy="10.5" r="2.6" fill="#C9D6C4" opacity=".4"/>
+            </pattern>
+            <pattern id="mow" width="164" height="440" patternUnits="userSpaceOnUse" x="90" y="90">
+              <rect width="82" height="440" fill="#3f8046"/>
+              <rect x="82" width="82" height="440" fill="#48904f"/>
+            </pattern>
+            <pattern id="net" width="6" height="6" patternUnits="userSpaceOnUse">
+              <rect width="6" height="6" fill="rgba(0,0,0,.25)"/>
+              <path d="M0 0H6M0 0V6" stroke="#F3EFE3" stroke-width=".8" opacity=".7" fill="none"/>
+            </pattern>
+            <radialGradient id="flood">
+              <stop offset="0" stop-color="#fff8d8" stop-opacity=".75"/>
+              <stop offset="1" stop-color="#fff8d8" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+
+          <!-- Tribüne -->
+          <rect class="stands" id="stands" x="-10" y="-10" width="1020" height="640" fill="url(#crowd)"/>
+          <rect x="14" y="14" width="972" height="592" rx="26" fill="none" stroke="#0f1d15" stroke-width="3" opacity=".7"/>
+          <rect x="32" y="32" width="936" height="556" rx="18" fill="none" stroke="#0f1d15" stroke-width="3" opacity=".7"/>
+          <circle cx="28" cy="28" r="40" fill="url(#flood)"/>
+          <circle cx="972" cy="28" r="40" fill="url(#flood)"/>
+          <circle cx="28" cy="592" r="40" fill="url(#flood)"/>
+          <circle cx="972" cy="592" r="40" fill="url(#flood)"/>
+
+          <!-- Umlauf -->
+          <rect x="50" y="56" width="900" height="508" rx="8" fill="#1B3323" stroke="#0f1d15" stroke-width="3"/>
+
+          <!-- Rasen -->
+          <rect x="90" y="90" width="820" height="440" fill="url(#mow)"/>
+
+          <!-- Spielfeldlinien -->
+          <g fill="none" stroke="#F3EFE3" stroke-width="3" stroke-linecap="round" opacity=".9">
+            <rect x="90" y="90" width="820" height="440"/>
+            <line x1="500" y1="90" x2="500" y2="530"/>
+            <circle cx="500" cy="310" r="62"/>
+            <rect x="90" y="180" width="129" height="260"/>
+            <rect x="781" y="180" width="129" height="260"/>
+            <rect x="90" y="251" width="43" height="118"/>
+            <rect x="867" y="251" width="43" height="118"/>
+            <path d="M219 253.5 A71 71 0 0 1 219 366.5"/>
+            <path d="M781 253.5 A71 71 0 0 0 781 366.5"/>
+            <path d="M90 104 A14 14 0 0 0 104 90"/>
+            <path d="M896 90 A14 14 0 0 0 910 104"/>
+            <path d="M910 516 A14 14 0 0 0 896 530"/>
+            <path d="M104 530 A14 14 0 0 0 90 516"/>
+          </g>
+          <g fill="#F3EFE3" opacity=".9">
+            <circle cx="500" cy="310" r="4.5"/>
+            <circle cx="176" cy="310" r="3.5"/>
+            <circle cx="824" cy="310" r="3.5"/>
+          </g>
+
+          <!-- Markierungen der Ballstationen (jeweils auf einer Linie) -->
+          <g fill="#F3EFE3" opacity=".55">
+            <circle cx="133" cy="310" r="3"/>
+            <circle cx="219" cy="310" r="3"/>
+            <circle cx="781" cy="310" r="3"/>
+            <circle cx="867" cy="310" r="3"/>
+          </g>
+
+          <!-- Tore -->
+          <g class="goal" id="goalL">
+            <rect x="60" y="286.5" width="30" height="47" fill="url(#net)" stroke="#F3EFE3" stroke-width="3"/>
+          </g>
+          <g class="goal" id="goalR">
+            <rect x="910" y="286.5" width="30" height="47" fill="url(#net)" stroke="#F3EFE3" stroke-width="3"/>
+          </g>
+
+          <!-- Ball -->
+          <g id="ballPos" style="transform: translate(500px, 310px);">
+            <ellipse cx="2" cy="5" rx="12" ry="9" fill="#000" opacity=".3"/>
+            <g id="ballSpin">
+              <circle r="12" fill="#fff" stroke="#1c1c1c" stroke-width="1.2"/>
+              <polygon points="0,-4.6 4.4,-1.4 2.7,3.7 -2.7,3.7 -4.4,-1.4" fill="#1c1c1c"/>
+              <g fill="#1c1c1c">
+                <circle cx="0" cy="-10" r="1.7"/>
+                <circle cx="9.5" cy="-3" r="1.7"/>
+                <circle cx="5.9" cy="8" r="1.7"/>
+                <circle cx="-5.9" cy="8" r="1.7"/>
+                <circle cx="-9.5" cy="-3" r="1.7"/>
+              </g>
+            </g>
+          </g>
+        </svg>
+
+        <div class="celebrate" id="celebrate" hidden>
+          <div class="confetti" id="confetti"></div>
+          <div class="banner">
+            <div class="tor">TOOOR!</div>
+            <div class="who" id="celebWho"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn team a" id="btnA" type="button"></button>
+        <button class="btn team b" id="btnB" type="button"></button>
+      </div>
+      <div class="extras">
+        <button class="btn ghost" id="undoBtn" type="button">Rückgängig</button>
+        <button class="btn ghost" id="resetBtn" type="button">Neues Spiel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // Ballstationen von links (Tor Team 1) nach rechts (Tor Team 2), jeweils auf einer Feldlinie
+  const POS_X = [75, 133, 219, 500, 781, 867, 925];
+  const CY = 310;
+  const START = 3;
+  const LAST = POS_X.length - 1;
+  const BALL_R = 12;
+  const CELEBRATE_MS = 3400;
+
+  const COLORS = { A:'#89B7CB', B:'#E2836B' };
+  const CONFETTI = ['#89B7CB', '#E2836B', '#E8C25B', '#F3EFE3', '#93C08C'];
+
+  const $ = function(id){ return document.getElementById(id); };
+  const ballPos = $('ballPos'), ballSpin = $('ballSpin');
+  const nameInputs = { A:$('nameA'), B:$('nameB') };
+  const scoreEls = { A:$('scoreA'), B:$('scoreB') };
+  const cards = { A:$('cardA'), B:$('cardB') };
+  const btns = { A:$('btnA'), B:$('btnB') };
+  const undoBtn = $('undoBtn'), resetBtn = $('resetBtn');
+  const celebrate = $('celebrate'), celebWho = $('celebWho'), confetti = $('confetti');
+  const stands = $('stands');
+  const goals = { A:$('goalR'), B:$('goalL') }; // Team A trifft ins rechte Tor
+
+  let pos, score, history, busy, spin, timer;
+
+  function teamName(t){
+    return nameInputs[t].value.trim() || (t === 'A' ? 'Team Blau' : 'Team Rot');
+  }
+
+  function placeBall(newPos){
+    const dx = POS_X[newPos] - (POS_X[pos] === undefined ? POS_X[START] : POS_X[pos]);
+    spin += dx / (2 * Math.PI * BALL_R) * 360;
+    ballPos.style.transform = 'translate(' + POS_X[newPos] + 'px, ' + CY + 'px)';
+    ballSpin.style.transform = 'rotate(' + spin + 'deg)';
+  }
+
+  function render(){
+    scoreEls.A.textContent = score.A;
+    scoreEls.B.textContent = score.B;
+    btns.A.textContent = '✓ ' + teamName('A') + ' war richtig';
+    btns.B.textContent = '✓ ' + teamName('B') + ' war richtig';
+    cards.A.classList.toggle('attack', !busy && pos > START);
+    cards.B.classList.toggle('attack', !busy && pos < START);
+    btns.A.disabled = btns.B.disabled = busy;
+    undoBtn.disabled = busy || history.length === 0;
+    resetBtn.disabled = busy;
+  }
+
+  function bump(t){
+    const el = scoreEls[t];
+    el.classList.remove('bump');
+    void el.offsetWidth;
+    el.classList.add('bump');
+  }
+
+  function answer(t){
+    if(busy) return;
+    history.push({ pos:pos, A:score.A, B:score.B });
+    const next = pos + (t === 'A' ? 1 : -1);
+    placeBall(next);
+    pos = next;
+    if(pos === LAST || pos === 0){
+      busy = true;
+      render();
+      timer = setTimeout(function(){ goal(t); }, 650);
+      return;
+    }
+    render();
+  }
+
+  function goal(t){
+    score[t]++;
+    render();
+    bump(t);
+
+    celebrate.style.setProperty('--team', COLORS[t]);
+    celebWho.textContent = '';
+    const who = document.createElement('span');
+    who.textContent = teamName(t);
+    celebWho.appendChild(who);
+    celebWho.appendChild(document.createTextNode(' trifft!'));
+    launchConfetti();
+    celebrate.hidden = false;
+    restart(stands, 'cheer');
+    restart(goals[t], 'hit');
+
+    timer = setTimeout(function(){
+      celebrate.hidden = true;
+      confetti.textContent = '';
+      stands.classList.remove('cheer');
+      goals[t].classList.remove('hit');
+      placeBall(START);
+      pos = START;
+      busy = false;
+      render();
+    }, CELEBRATE_MS);
+  }
+
+  function restart(el, cls){
+    el.classList.remove(cls);
+    void el.getBoundingClientRect();
+    el.classList.add(cls);
+  }
+
+  function launchConfetti(){
+    confetti.textContent = '';
+    for(let i = 0; i < 70; i++){
+      const p = document.createElement('i');
+      p.style.left = (Math.random() * 100) + '%';
+      p.style.background = CONFETTI[i % CONFETTI.length];
+      p.style.setProperty('--d', (1.8 + Math.random() * 1.6).toFixed(2) + 's');
+      p.style.setProperty('--delay', (Math.random() * 0.9).toFixed(2) + 's');
+      p.style.setProperty('--dx', (Math.random() * 120 - 60).toFixed(0) + 'px');
+      p.style.setProperty('--rot', (360 + Math.random() * 720).toFixed(0) + 'deg');
+      confetti.appendChild(p);
+    }
+  }
+
+  function undo(){
+    if(busy || !history.length) return;
+    const h = history.pop();
+    placeBall(h.pos);
+    pos = h.pos;
+    score.A = h.A;
+    score.B = h.B;
+    render();
+  }
+
+  function newGame(){
+    if(busy) return;
+    clearTimeout(timer);
+    score = { A:0, B:0 };
+    history = [];
+    placeBall(START);
+    pos = START;
+    render();
+  }
+
+  btns.A.addEventListener('click', function(){ answer('A'); });
+  btns.B.addEventListener('click', function(){ answer('B'); });
+  undoBtn.addEventListener('click', undo);
+  resetBtn.addEventListener('click', newGame);
+  nameInputs.A.addEventListener('input', render);
+  nameInputs.B.addEventListener('input', render);
+
+  pos = START; spin = 0; busy = false; history = []; score = { A:0, B:0 };
+  render();
+})();
+</script>
+</body>
+</html>
