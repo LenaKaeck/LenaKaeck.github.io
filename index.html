@@ -49,6 +49,16 @@
     margin:0;
   }
 
+  .section + .section{ margin-top: 44px; }
+  .section-title{
+    font-family:'Kalam', cursive;
+    font-weight:700;
+    font-size:1.7rem;
+    margin:0 0 16px;
+    padding-bottom:8px;
+    border-bottom:1.5px dashed rgba(243,239,227,0.25);
+  }
+
   .grid{
     display:grid;
     grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
@@ -153,6 +163,8 @@
       <p class="sub">Kleine Übungsspiele für die Tafel oder zum Selbstüben &mdash; wird laufend erweitert.</p>
     </header>
 
+    <section class="section">
+    <h2 class="section-title">Term-Spiele</h2>
     <div class="grid">
 
       <a class="card" href="klammer-blitz.html">
@@ -173,6 +185,15 @@
         </div>
       </a>
 
+      <div class="placeholder">Hier kommt das nächste Spiel hin</div>
+
+    </div>
+    </section>
+
+    <section class="section">
+    <h2 class="section-title">Allgemeine Spiele</h2>
+    <div class="grid">
+
       <a class="card" href="tic-tac-toe.html">
         <div class="card-inner">
           <span class="tag">Logik</span>
@@ -185,6 +206,7 @@
       <div class="placeholder">Hier kommt das nächste Spiel hin</div>
 
     </div>
+    </section>
 
     <footer>Mathe-Spiele &middot; wird laufend um neue Themen ergänzt</footer>
   </div>
