@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Formel-Mission</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-1:#0B1026; --bg-2:#050714;
+    --panel: rgba(255,255,255,0.05);
+    --panel-strong: rgba(255,255,255,0.09);
+    --border: rgba(231,233,245,0.14);
+    --text:#E7E9F5; --text-dim:#9AA1C7;
+    --cyan:#5EEAD4; --magenta:#F472B6; --gold:#FBBF24;
+    --green:#7EE787; --red:#F87171;
+    --radius:16px;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0; min-height:100vh;
+    font-family:'Space Grotesk', sans-serif; color:var(--text);
+    background:
+      radial-gradient(circle, rgba(255,255,255,0.55) 1px, transparent 1.4px),
+      radial-gradient(circle, rgba(255,255,255,0.3) 1px, transparent 1.2px),
+      linear-gradient(180deg, var(--bg-1), var(--bg-2));
+    background-size: 140px 140px, 90px 90px, 100% 100%;
+    background-position: 0 0, 45px 65px, 0 0;
+    padding: 28px 16px 40px;
+  }
+  h1,h2,h3{ font-family:'Orbitron', sans-serif; margin:0; }
+  .wrap{ max-width: 760px; margin:0 auto; }
+
+  header{ text-align:center; margin-bottom: 22px; }
+  header h1{ font-size: clamp(1.6rem, 5vw, 2.2rem); letter-spacing:.5px;
+    background: linear-gradient(90deg, var(--cyan), var(--magenta));
+    -webkit-background-clip:text; background-clip:text; color:transparent; }
+  header p{ color:var(--text-dim); font-size:.9rem; margin:6px 0 0; }
+
+  .hidden{ display:none !important; }
+
+  /* ---------- start screen ---------- */
+  .startCard{
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+    padding: 28px 24px; text-align:center;
+  }
+  .startCard p.rules{ color:var(--text-dim); font-size:.9rem; line-height:1.7; max-width:52ch; margin: 0 auto 20px; text-align:left; }
+  .playerChoice{ display:flex; gap:12px; justify-content:center; margin-bottom:22px; flex-wrap:wrap; }
+  .playerBtn{
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:.95rem;
+    background: var(--panel-strong); border:1.5px solid var(--border); color:var(--text);
+    border-radius:12px; padding:14px 20px; cursor:pointer; min-width:150px;
+  }
+  .playerBtn .figs{ display:block; font-size:1.3rem; margin-bottom:4px; }
+  .playerBtn.active{ border-color: var(--cyan); box-shadow: 0 0 0 2px rgba(94,234,212,0.35); }
+
+  .btn{
+    font-family:'Orbitron', sans-serif; font-weight:700; font-size:1rem;
+    background: linear-gradient(90deg, var(--cyan), var(--magenta)); color:#0B1026;
+    border:none; border-radius:12px; padding:14px 30px; cursor:pointer;
+    box-shadow: 0 4px 0 rgba(0,0,0,0.35);
+  }
+  .btn:active{ transform: translateY(3px); box-shadow:0 1px 0 rgba(0,0,0,0.35); }
+  .btn:disabled{ opacity:.5; cursor:default; }
+  .btn.ghost{
+    background:transparent; border:1.5px solid var(--border); color:var(--text);
+    box-shadow:none; font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:.9rem; padding:10px 18px;
+  }
+
+  /* ---------- game hud ---------- */
+  .hud{
+    display:flex; align-items:center; justify-content:space-between; gap:14px;
+    background:var(--panel); border:1px solid var(--border); border-radius:14px;
+    padding: 12px 16px; margin-bottom:16px; flex-wrap:wrap;
+  }
+  .turnBadge{ display:flex; align-items:center; gap:10px; font-weight:700; }
+  .turnBadge .fig{ font-size:1.5rem; }
+  .turnBadge .pname{ font-family:'Orbitron',sans-serif; font-size:.95rem; }
+
+  .diceArea{ display:flex; align-items:center; gap:12px; }
+  .die{
+    width:52px; height:52px; border-radius:12px; background:#fff;
+    display:grid; grid-template-columns: repeat(3,1fr); grid-template-rows: repeat(3,1fr);
+    padding:7px; gap:2px; box-shadow: 0 4px 12px rgba(0,0,0,0.35);
+    flex-shrink:0;
+  }
+  .die .dot{ border-radius:50%; background:#0B1026; opacity:0; align-self:center; justify-self:center; width:9px; height:9px; }
+  .die.small{ width:34px; height:34px; padding:5px; }
+  .die.small .dot{ width:5px; height:5px; }
+
+  /* ---------- board ---------- */
+  .boardWrap{ overflow-x:auto; padding-bottom:6px; }
+  .startTag{
+    display:flex; align-items:center; gap:8px; justify-content:center;
+    color:var(--text-dim); font-size:.8rem; margin-bottom:8px; min-height:34px;
+  }
+  #startArea{ display:flex; gap:4px; }
+
+  .board{
+    position:relative;
+    display:grid; grid-template-columns: repeat(6, minmax(74px, 1fr));
+    gap:6px; min-width: 470px;
+  }
+  .pathSvg{ position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:0; overflow:visible; }
+  .cell{
+    position:relative; z-index:1; aspect-ratio: 1 / 1;
+    background: var(--panel); border:1.5px solid var(--border); border-radius:10px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:4px; text-align:center;
+  }
+  .cell .num{ position:absolute; top:3px; left:5px; font-size:.62rem; color:var(--text-dim); }
+  .cell .icon{ font-size:1.15rem; line-height:1; }
+  .cell .lbl{ font-size:.56rem; color:var(--text-dim); margin-top:2px; line-height:1.1; }
+  .cell.boost{ border-color: rgba(126,231,135,0.5); background: rgba(126,231,135,0.08); }
+  .cell.setback{ border-color: rgba(248,113,113,0.5); background: rgba(248,113,113,0.08); }
+  .cell.finish{ border-color: rgba(251,191,36,0.6); background: rgba(251,191,36,0.1); }
+  .cell .tokenRow{ position:absolute; bottom:1px; display:flex; gap:2px; justify-content:center; width:100%; flex-wrap:wrap; }
+  .token{
+    width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-size:17px; box-shadow: 0 0 0 2px rgba(0,0,0,0.4);
+  }
+
+  /* ---------- toast ---------- */
+  .toast{
+    position:fixed; left:50%; top:18px; transform:translateX(-50%);
+    background: var(--panel-strong); border:1px solid var(--border); border-radius:12px;
+    padding:10px 18px; font-weight:700; font-family:'Orbitron',sans-serif; font-size:.85rem;
+    z-index:50; opacity:0; pointer-events:none;
+  }
+  .toast.show{ animation: toastPop 1.5s ease forwards; }
+  @keyframes toastPop{
+    0%{opacity:0; transform:translateX(-50%) translateY(-8px);}
+    15%{opacity:1; transform:translateX(-50%) translateY(0);}
+    80%{opacity:1;}
+    100%{opacity:0; transform:translateX(-50%) translateY(-8px);}
+  }
+
+  /* ---------- modal ---------- */
+  .overlay{
+    position:fixed; inset:0; background:rgba(3,4,12,0.72); backdrop-filter: blur(2px);
+    display:flex; align-items:center; justify-content:center; padding:20px; z-index:100;
+  }
+  .modal{
+    width:100%; max-width:420px; background: linear-gradient(180deg, #131A38, #0C1029);
+    border:1px solid var(--border); border-radius:18px; padding:26px 22px;
+  }
+  .modal .tag{ font-size:.72rem; color:var(--cyan); font-weight:700; letter-spacing:.4px; }
+  .modal .qexpr{
+    font-family:'Orbitron', sans-serif; font-size: clamp(1.3rem, 6vw, 1.7rem);
+    margin: 10px 0 18px; text-align:center; word-break:break-word;
+  }
+  .qopts{ display:flex; flex-direction:column; gap:9px; }
+  .qopt{
+    text-align:left; font-family:'Space Grotesk',sans-serif; font-size:.95rem; font-weight:600;
+    background: var(--panel-strong); border:1.5px solid var(--border); color:var(--text);
+    border-radius:10px; padding:12px 14px; cursor:pointer;
+  }
+  .qopt:hover{ border-color: var(--cyan); }
+  .qopt[disabled]{ cursor:default; }
+  .qopt.correct{ background: rgba(126,231,135,0.22); border-color: var(--green); }
+  .qopt.wrong{ background: rgba(248,113,113,0.22); border-color: var(--red); }
+  .qfeedback{ margin-top:14px; text-align:center; font-weight:700; min-height:1.4em; }
+  .qfeedback.ok{ color:var(--green); }
+  .qfeedback.bad{ color:var(--red); }
+  .modal .nextRow{ margin-top:16px; text-align:center; }
+
+  /* ---------- win screen ---------- */
+  .winCard{ text-align:center; }
+  .winCard .fig{ font-size:3rem; }
+  .winCard h2{ font-size:1.6rem; margin:10px 0 4px; }
+
+  @media (prefers-reduced-motion: reduce){
+    .toast.show{ animation:none; opacity:1; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Formel-Mission</h1>
+    <p>1., 2. &amp; 3. binomische Formel &mdash; würfeln, rechnen, zum Ziel fliegen.</p>
+  </header>
+
+  <!-- START SCREEN -->
+  <div id="startScreen" class="startCard">
+    <p class="rules">
+      Reihum würfelt ihr und bewegt eure Figur über das Spielfeld. Landet ihr auf einem
+      <b>Mathe-Aufgabe</b>-Feld, erscheint kurz danach eine Aufgabe zur binomischen Formel mit 4 Antworten.
+      Richtig? Ihr geht 2 Felder vor. Falsch? Ihr bleibt stehen.
+      Manche Felder sind <b>Boost</b> (+2) oder <b>Asteroid</b> (&minus;3). Wer zuerst das Ziel erreicht, gewinnt.
+    </p>
+    <div class="playerChoice" id="playerChoice">
+      <button class="playerBtn active" data-n="2"><span class="figs">🚀 🛸</span>2 Spieler</button>
+      <button class="playerBtn" data-n="3"><span class="figs">🚀 🛸 👾</span>3 Spieler</button>
+    </div>
+    <button class="btn" id="startBtn">Mission starten</button>
+  </div>
+
+  <!-- GAME SCREEN -->
+  <div id="gameScreen" class="hidden">
+    <div class="hud">
+      <div class="turnBadge">
+        <span class="fig" id="turnFig">🚀</span>
+        <span class="pname" id="turnName">Spieler 1 ist dran</span>
+      </div>
+      <div class="diceArea">
+        <div class="die" id="die">
+          <span class="dot" data-p="0"></span><span class="dot" data-p="1"></span><span class="dot" data-p="2"></span>
+          <span class="dot" data-p="3"></span><span class="dot" data-p="4"></span><span class="dot" data-p="5"></span>
+          <span class="dot" data-p="6"></span><span class="dot" data-p="7"></span><span class="dot" data-p="8"></span>
+        </div>
+        <button class="btn" id="rollBtn">Würfeln</button>
+      </div>
+    </div>
+
+    <div class="startTag">Start <span id="startArea"></span></div>
+    <div class="boardWrap">
+      <div class="board" id="board">
+        <svg class="pathSvg" id="pathSvg"></svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- WIN SCREEN -->
+  <div id="winScreen" class="hidden startCard winCard">
+    <div class="fig" id="winFig">🚀</div>
+    <h2 id="winName">Spieler 1 gewinnt!</h2>
+    <p style="color:var(--text-dim); margin:0 0 20px;">Mission erfolgreich abgeschlossen.</p>
+    <button class="btn" id="againBtn">Neue Mission</button>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <!-- SHIELD OVERLAY -->
+  <div id="shieldOverlay" class="overlay hidden">
+    <div class="modal" style="text-align:center;">
+      <div style="font-size:2.6rem; line-height:1;">🛡️☄️</div>
+      <h3 style="font-family:'Orbitron',sans-serif; font-size:1.15rem; margin:14px 0 6px;">Asteroid abgewehrt!</h3>
+      <p style="color:var(--text-dim); font-size:.9rem; margin:0 0 20px;">Deine richtige Antwort schützt dich – kein Rückschritt.</p>
+      <button class="btn" id="shieldNextBtn">Weiter</button>
+    </div>
+  </div>
+
+  <!-- QUESTION MODAL -->
+  <div id="qOverlay" class="overlay hidden">
+    <div class="modal">
+      <div class="tag" id="qTag">Löse die Aufgabe:</div>
+      <div class="qexpr" id="qExpr">(x + 3)²</div>
+      <div class="qopts" id="qOpts"></div>
+      <div class="qfeedback" id="qFeedback"></div>
+      <div class="nextRow"><button class="btn ghost hidden" id="qNextBtn">Weiter</button></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* =========================================================
+     MATH-ENGINE: 1., 2. und 3. binomische Formel
+     ========================================================= */
+  function randInt(min, max){ return Math.floor(Math.random()*(max-min+1))+min; }
+  function abs(n){ return Math.abs(n); }
+  function signStr(n){ return n>=0 ? '+' : '\u2212'; }
+  function shuffle(arr){
+    const a = arr.slice();
+    for(let i=a.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+    return a;
+  }
+  function coeffStr(n, unit){
+    const a = abs(n);
+    return (a===1 ? '' : String(a)) + unit;
+  }
+  function polyStr(terms){
+    let result = ''; let first = true;
+    terms.forEach(function(t){
+      if(t.coef === 0) return;
+      const magnitude = abs(t.coef);
+      const term = t.unit === '' ? String(magnitude) : coeffStr(magnitude, t.unit);
+      if(first){ result += (t.coef < 0 ? '\u2212 ' : '') + term; first = false; }
+      else{ result += ' ' + signStr(t.coef) + ' ' + term; }
+    });
+    return result || '0';
+  }
+  function randAB(){
+    const a = randInt(1,20);
+    const b = a > 10 ? randInt(1,9) : randInt(1,20);
+    return { a:a, b:b };
+  }
+  function cloneTerms(terms){ return terms.map(function(t){ return {coef:t.coef, unit:t.unit}; }); }
+  function withTermCoef(terms, index, newCoef){ const c = cloneTerms(terms); c[index].coef = newCoef; return c; }
+
+  const SMALL_DELTAS = [-6,-5,-4,-3,-2,-1,1,2,3,4,5,6];
+  function randDelta(){ return SMALL_DELTAS[randInt(0, SMALL_DELTAS.length-1)]; }
+
+  function buildDistractorPool(terms, extraTerms){
+    const correctStr = polyStr(terms);
+    const pool = new Set();
+    function tryAdd(candidateTerms){ const s = polyStr(candidateTerms); if(s !== correctStr) pool.add(s); }
+
+    tryAdd(withTermCoef(terms, 1, 0));
+    tryAdd(withTermCoef(terms, 1, -terms[1].coef));
+    tryAdd(withTermCoef(terms, 1, Math.round(terms[1].coef/2) || 1));
+    tryAdd(withTermCoef(terms, 2, -terms[2].coef));
+    if(extraTerms){ extraTerms.forEach(tryAdd); }
+
+    let guard = 0;
+    while(pool.size < 6 && guard < 40){
+      const idx = randInt(0,2);
+      tryAdd(withTermCoef(terms, idx, terms[idx].coef + randDelta()));
+      guard++;
+    }
+    return Array.from(pool);
+  }
+
+  function finalize(label, prompt, correct, pool){
+    const distractors = shuffle(pool).slice(0,3);
+    const options = shuffle([correct, ...distractors]);
+    return { label: label, expr: prompt, correct: correct, options: options };
+  }
+
+  const NONE_TEXT = 'Keine der Lösungen stimmt';
+  function applyNoneOption(q){
+    if(Math.random() > 0.25) return q;
+    const trueCase = Math.random() < 0.5;
+    if(trueCase){
+      q.options = q.options.map(function(o){ return o === q.correct ? NONE_TEXT : o; });
+      q.correct = NONE_TEXT;
+    } else {
+      const idx = q.options.findIndex(function(o){ return o !== q.correct; });
+      q.options[idx] = NONE_TEXT;
+    }
+    return q;
+  }
+
+  // 1. binomische Formel
+  function genC(){
+    const a = randInt(1,20);
+    const terms = [{coef:1,unit:'x\u00B2'},{coef:2*a,unit:'x'},{coef:a*a,unit:''}];
+    const prompt = '(x + ' + a + ')\u00B2';
+    return finalize('Löse die Aufgabe:', prompt, polyStr(terms), buildDistractorPool(terms));
+  }
+  // 2. binomische Formel
+  function genD(){
+    const a = randInt(1,20);
+    const terms = [{coef:1,unit:'x\u00B2'},{coef:-2*a,unit:'x'},{coef:a*a,unit:''}];
+    const prompt = '(x \u2212 ' + a + ')\u00B2';
+    return finalize('Löse die Aufgabe:', prompt, polyStr(terms), buildDistractorPool(terms));
+  }
+  // 1. BF mit Koeffizient vor x
+  function genE(){
+    const ab = randAB(), a=ab.a, b=ab.b;
+    const terms = [{coef:a*a,unit:'x\u00B2'},{coef:2*a*b,unit:'x'},{coef:b*b,unit:''}];
+    const prompt = '(' + coeffStr(a,'x') + ' + ' + b + ')\u00B2';
+    const extra = [ withTermCoef(terms,0,a), withTermCoef(terms,2,b) ];
+    return finalize('Löse die Aufgabe:', prompt, polyStr(terms), buildDistractorPool(terms, extra));
+  }
+  // 2. BF mit Koeffizient vor x
+  function genF(){
+    const ab = randAB(), a=ab.a, b=ab.b;
+    const terms = [{coef:a*a,unit:'x\u00B2'},{coef:-2*a*b,unit:'x'},{coef:b*b,unit:''}];
+    const prompt = '(' + coeffStr(a,'x') + ' \u2212 ' + b + ')\u00B2';
+    const extra = [ withTermCoef(terms,0,a), withTermCoef(terms,2,b) ];
+    return finalize('Löse die Aufgabe:', prompt, polyStr(terms), buildDistractorPool(terms, extra));
+  }
+  // 1. BF mit zwei Variablen
+  function genG(){
+    const ab = randAB(), a=ab.a, b=ab.b;
+    const terms = [{coef:a*a,unit:'x\u00B2'},{coef:2*a*b,unit:'xy'},{coef:b*b,unit:'y\u00B2'}];
+    const prompt = '(' + coeffStr(a,'x') + ' + ' + coeffStr(b,'y') + ')\u00B2';
+    const extra = [ withTermCoef(terms,0,a), withTermCoef(terms,2,b) ];
+    return finalize('Löse die Aufgabe:', prompt, polyStr(terms), buildDistractorPool(terms, extra));
+  }
+  // 2. BF mit zwei Variablen
+  function genH(){
+    const ab = randAB(), a=ab.a, b=ab.b;
+    const terms = [{coef:a*a,unit:'x\u00B2'},{coef:-2*a*b,unit:'xy'},{coef:b*b,unit:'y\u00B2'}];
+    const prompt = '(' + coeffStr(a,'x') + ' \u2212 ' + coeffStr(b,'y') + ')\u00B2';
+    const extra = [ withTermCoef(terms,0,a), withTermCoef(terms,2,b) ];
+    return finalize('Löse die Aufgabe:', prompt, polyStr(terms), buildDistractorPool(terms, extra));
+  }
+  // 3. binomische Formel (x+a)(x-a) = x^2 - a^2
+  function genI(){
+    const a = randInt(1,20);
+    const terms = [{coef:1,unit:'x\u00B2'},{coef:0,unit:'x'},{coef:-(a*a),unit:''}];
+    const prompt = '(x + ' + a + ')(x \u2212 ' + a + ')';
+    const extra = [
+      [{coef:1,unit:'x\u00B2'},{coef:2*a,unit:'x'},{coef:a*a,unit:''}],
+      [{coef:1,unit:'x\u00B2'},{coef:-2*a,unit:'x'},{coef:a*a,unit:''}]
+    ];
+    return finalize('Löse die Aufgabe:', prompt, polyStr(terms), buildDistractorPool(terms, extra));
+  }
+  // 3. BF mit Koeffizient vor x
+  function genJ(){
+    const ab = randAB(), a=ab.a, b=ab.b;
+    const terms = [{coef:a*a,unit:'x\u00B2'},{coef:0,unit:'x'},{coef:-(b*b),unit:''}];
+    const prompt = '(' + coeffStr(a,'x') + ' + ' + b + ')(' + coeffStr(a,'x') + ' \u2212 ' + b + ')';
+    const extra = [
+      [{coef:a*a,unit:'x\u00B2'},{coef:2*a*b,unit:'x'},{coef:b*b,unit:''}],
+      [{coef:a*a,unit:'x\u00B2'},{coef:-2*a*b,unit:'x'},{coef:b*b,unit:''}],
+      withTermCoef(terms,0,a),
+      withTermCoef(terms,2,-b)
+    ];
+    return finalize('Löse die Aufgabe:', prompt, polyStr(terms), buildDistractorPool(terms, extra));
+  }
+  // 3. BF mit zwei Variablen
+  function genK(){
+    const ab = randAB(), a=ab.a, b=ab.b;
+    const terms = [{coef:a*a,unit:'x\u00B2'},{coef:0,unit:'xy'},{coef:-(b*b),unit:'y\u00B2'}];
+    const prompt = '(' + coeffStr(a,'x') + ' + ' + coeffStr(b,'y') + ')(' + coeffStr(a,'x') + ' \u2212 ' + coeffStr(b,'y') + ')';
+    const extra = [
+      [{coef:a*a,unit:'x\u00B2'},{coef:2*a*b,unit:'xy'},{coef:b*b,unit:'y\u00B2'}],
+      [{coef:a*a,unit:'x\u00B2'},{coef:-2*a*b,unit:'xy'},{coef:b*b,unit:'y\u00B2'}],
+      withTermCoef(terms,0,a),
+      withTermCoef(terms,2,-b)
+    ];
+    return finalize('Löse die Aufgabe:', prompt, polyStr(terms), buildDistractorPool(terms, extra));
+  }
+
+  const GENERATORS = [genC, genD, genE, genF, genG, genH, genI, genJ, genK];
+  function nextQuestion(){
+    const gen = GENERATORS[randInt(0, GENERATORS.length-1)];
+    return applyNoneOption(gen());
+  }
+
+  /* =========================================================
+     BOARD SETUP
+     ========================================================= */
+  const TRACK_LEN = 30;
+  const BOOST = new Set([5, 12, 19, 26]);
+  const SETBACK = new Set([8, 15, 22, 29]);
+  function cellType(n){
+    if(n === TRACK_LEN) return 'finish';
+    if(BOOST.has(n)) return 'boost';
+    if(SETBACK.has(n)) return 'setback';
+    return 'question';
+  }
+  const CELL_META = {
+    question: { icon:'👽', label:'Mathe-Aufgabe' },
+    boost:    { icon:'🌠', label:'Boost +2' },
+    setback:  { icon:'☄️', label:'Asteroid \u22123' },
+    finish:   { icon:'🪐', label:'Ziel' }
+  };
+
+  // Sichtbare Schlangen-Reihenfolge für ein 6-Spalten-Grid
+  function buildVisualOrder(len, cols){
+    const rows = Math.ceil(len/cols);
+    const order = [];
+    for(let r=0; r<rows; r++){
+      const rowStart = r*cols + 1;
+      const rowNums = [];
+      for(let c=0;c<cols;c++){
+        const n = rowStart + c;
+        if(n <= len) rowNums.push(n);
+      }
+      if(r % 2 === 1) rowNums.reverse();
+      order.push.apply(order, rowNums);
+    }
+    return order;
+  }
+
+  const PLAYERS_META = [
+    { emoji:'🚀', color:'#5EEAD4', name:'Rakete' },
+    { emoji:'🛸', color:'#F472B6', name:'Ufo' },
+    { emoji:'👾', color:'#FBBF24', name:'Alien' }
+  ];
+
+  /* =========================================================
+     DOM
+     ========================================================= */
+  const startScreen = document.getElementById('startScreen');
+  const gameScreen = document.getElementById('gameScreen');
+  const winScreen = document.getElementById('winScreen');
+  const playerChoice = document.getElementById('playerChoice');
+  const startBtn = document.getElementById('startBtn');
+  const againBtn = document.getElementById('againBtn');
+  const boardEl = document.getElementById('board');
+  const startAreaEl = document.getElementById('startArea');
+  const dieEl = document.getElementById('die');
+  const rollBtn = document.getElementById('rollBtn');
+  const turnFig = document.getElementById('turnFig');
+  const turnName = document.getElementById('turnName');
+  const toastEl = document.getElementById('toast');
+  const qOverlay = document.getElementById('qOverlay');
+  const qTag = document.getElementById('qTag');
+  const qExpr = document.getElementById('qExpr');
+  const qOpts = document.getElementById('qOpts');
+  const qFeedback = document.getElementById('qFeedback');
+  const qNextBtn = document.getElementById('qNextBtn');
+  const winFig = document.getElementById('winFig');
+  const winName = document.getElementById('winName');
+  const shieldOverlay = document.getElementById('shieldOverlay');
+  const shieldNextBtn = document.getElementById('shieldNextBtn');
+
+  let numPlayers = 2;
+  let players = [];
+  let currentPlayer = 0;
+  let rolling = false;
+
+  playerChoice.addEventListener('click', function(e){
+    const btn = e.target.closest('.playerBtn');
+    if(!btn) return;
+    numPlayers = parseInt(btn.getAttribute('data-n'), 10);
+    Array.from(playerChoice.children).forEach(function(b){ b.classList.remove('active'); });
+    btn.classList.add('active');
+  });
+
+  function buildBoard(){
+    boardEl.querySelectorAll('.cell').forEach(function(c){ c.remove(); });
+    const order = buildVisualOrder(TRACK_LEN, 6);
+    order.forEach(function(n){
+      const type = cellType(n);
+      const meta = CELL_META[type];
+      const cell = document.createElement('div');
+      cell.className = 'cell ' + type;
+      cell.setAttribute('data-cell', n);
+      cell.innerHTML =
+        '<span class="num">' + n + '</span>' +
+        '<span class="icon">' + meta.icon + '</span>' +
+        '<span class="lbl">' + meta.label + '</span>' +
+        '<span class="tokenRow"></span>';
+      boardEl.appendChild(cell);
+    });
+  }
+
+  function drawPath(){
+    // Verbindung zwischen den Feldern bewusst nicht mehr dargestellt.
+  }
+
+  let resizeTimer = null;
+  window.addEventListener('resize', function(){
+    if(gameScreen.classList.contains('hidden')) return;
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(drawPath, 150);
+  });
+
+  function renderTokens(){
+    document.querySelectorAll('.tokenRow').forEach(function(el){ el.innerHTML = ''; });
+    startAreaEl.innerHTML = '';
+    players.forEach(function(p, i){
+      const meta = PLAYERS_META[i];
+      const tok = document.createElement('span');
+      tok.className = 'token';
+      tok.style.background = meta.color;
+      tok.textContent = meta.emoji;
+      if(p.pos === 0){
+        startAreaEl.appendChild(tok);
+      } else {
+        const cell = boardEl.querySelector('[data-cell="' + p.pos + '"] .tokenRow');
+        if(cell) cell.appendChild(tok);
+      }
+    });
+  }
+
+  function updateHud(){
+    const meta = PLAYERS_META[currentPlayer];
+    turnFig.textContent = meta.emoji;
+    turnFig.style.color = meta.color;
+    turnName.textContent = meta.name + ' (Spieler ' + (currentPlayer+1) + ') ist dran';
+  }
+
+  function setDieFace(el, n){
+    const FACES = {
+      1:[4], 2:[2,6], 3:[2,4,6], 4:[0,2,6,8], 5:[0,2,4,6,8], 6:[0,2,3,5,6,8]
+    };
+    const active = FACES[n] || [4];
+    el.querySelectorAll('.dot').forEach(function(dot){
+      const p = parseInt(dot.getAttribute('data-p'),10);
+      dot.style.opacity = active.indexOf(p) !== -1 ? '1' : '0';
+    });
+  }
+  setDieFace(dieEl, 1);
+
+  function animateDie(el, min, max, onDone){
+    let ticks = 0;
+    const totalTicks = 10;
+    const iv = setInterval(function(){
+      setDieFace(el, randInt(1,6));
+      ticks++;
+      if(ticks >= totalTicks){
+        clearInterval(iv);
+        const result = randInt(min, max);
+        setDieFace(el, Math.min(result,6));
+        onDone(result);
+      }
+    }, 70);
+  }
+
+  function showShield(onContinue){
+    shieldOverlay.classList.remove('hidden');
+    shieldNextBtn.onclick = function(){
+      shieldOverlay.classList.add('hidden');
+      onContinue();
+    };
+  }
+
+  function showToast(text){
+    toastEl.textContent = text;
+    toastEl.classList.remove('show');
+    void toastEl.offsetWidth;
+    toastEl.classList.add('show');
+  }
+
+  function animateMove(playerIdx, steps, forward, onDone){
+    let remaining = steps;
+    function stepOnce(){
+      if(remaining <= 0){ onDone(players[playerIdx].pos); return; }
+      if(forward){
+        players[playerIdx].pos = Math.min(TRACK_LEN, players[playerIdx].pos + 1);
+      } else {
+        players[playerIdx].pos = Math.max(0, players[playerIdx].pos - 1);
+      }
+      renderTokens();
+      remaining--;
+      if(forward && players[playerIdx].pos >= TRACK_LEN){ onDone(TRACK_LEN); return; }
+      setTimeout(stepOnce, 700);
+    }
+    stepOnce();
+  }
+
+  function endTurn(){
+    rolling = false;
+    rollBtn.disabled = false;
+    currentPlayer = (currentPlayer + 1) % numPlayers;
+    updateHud();
+  }
+
+  function handleLanding(finalPos){
+    if(finalPos >= TRACK_LEN){ return showWin(currentPlayer); }
+    const type = cellType(finalPos);
+    if(type === 'boost'){
+      showToast('🌠 Boost-Feld! +2 Felder');
+      setTimeout(function(){
+        // erneut prüfen, was auf dem NEUEN Feld liegt (kann wieder eine Aufgabe sein)
+        animateMove(currentPlayer, 2, true, handleLanding);
+      }, 900);
+    } else if(type === 'setback'){
+      showToast('☄️ Asteroid getroffen! \u22123 Felder');
+      setTimeout(function(){
+        animateMove(currentPlayer, 3, false, handleLanding);
+      }, 900);
+    } else if(type === 'question'){
+      setTimeout(askQuestion, 700);
+    } else {
+      endTurn();
+    }
+  }
+
+  rollBtn.addEventListener('click', function(){
+    if(rolling) return;
+    rolling = true;
+    rollBtn.disabled = true;
+    animateDie(dieEl, 1, 6, function(result){
+      setTimeout(function(){
+        animateMove(currentPlayer, result, true, handleLanding);
+      }, 250);
+    });
+  });
+
+  /* ---------- question modal ---------- */
+  let currentQuestion = null;
+
+  function askQuestion(){
+    currentQuestion = nextQuestion();
+    qTag.textContent = currentQuestion.label;
+    qExpr.textContent = currentQuestion.expr;
+    qFeedback.textContent = '';
+    qFeedback.className = 'qfeedback';
+    qNextBtn.classList.add('hidden');
+    qOpts.innerHTML = '';
+    currentQuestion.options.forEach(function(opt){
+      const btn = document.createElement('button');
+      btn.className = 'qopt';
+      btn.textContent = opt;
+      btn.setAttribute('data-answer', opt);
+      btn.addEventListener('click', function(){ answerQuestion(opt, btn); });
+      qOpts.appendChild(btn);
+    });
+    qOverlay.classList.remove('hidden');
+  }
+
+  function answerQuestion(chosen, btnEl){
+    const buttons = Array.from(qOpts.children);
+    buttons.forEach(function(b){
+      b.setAttribute('disabled','true');
+      if(b.getAttribute('data-answer') === currentQuestion.correct) b.classList.add('correct');
+    });
+    if(chosen === currentQuestion.correct){
+      qFeedback.textContent = 'Richtig! +2 Felder vor.';
+      qFeedback.className = 'qfeedback ok';
+      qNextBtn.classList.remove('hidden');
+      qNextBtn.onclick = function(){
+        qOverlay.classList.add('hidden');
+        animateMove(currentPlayer, 2, true, function(fp){
+          if(fp >= TRACK_LEN) return showWin(currentPlayer);
+          if(cellType(fp) === 'setback'){
+            showShield(endTurn);
+          } else {
+            endTurn();
+          }
+        });
+      };
+    } else {
+      if(btnEl) btnEl.classList.add('wrong');
+      qFeedback.textContent = 'Leider falsch \u2013 du bleibst stehen.';
+      qFeedback.className = 'qfeedback bad';
+      qNextBtn.classList.remove('hidden');
+      qNextBtn.onclick = function(){
+        qOverlay.classList.add('hidden');
+        endTurn();
+      };
+    }
+  }
+
+  /* ---------- start / win ---------- */
+  function startGame(){
+    players = [];
+    for(let i=0;i<numPlayers;i++){ players.push({ pos:0 }); }
+    currentPlayer = 0;
+    rolling = false;
+    buildBoard();
+    renderTokens();
+    updateHud();
+    startScreen.classList.add('hidden');
+    winScreen.classList.add('hidden');
+    gameScreen.classList.remove('hidden');
+    rollBtn.disabled = false;
+    requestAnimationFrame(function(){ requestAnimationFrame(drawPath); });
+  }
+
+  function showWin(playerIdx){
+    const meta = PLAYERS_META[playerIdx];
+    winFig.textContent = meta.emoji;
+    winFig.style.color = meta.color;
+    winName.textContent = meta.name + ' (Spieler ' + (playerIdx+1) + ') gewinnt!';
+    gameScreen.classList.add('hidden');
+    winScreen.classList.remove('hidden');
+  }
+
+  startBtn.addEventListener('click', startGame);
+  againBtn.addEventListener('click', function(){
+    winScreen.classList.add('hidden');
+    startScreen.classList.remove('hidden');
+  });
+})();
+</script>
+</body>
+</html>
