@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Drei Gewinnt</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-1:#24402F;
+    --bg-2:#1B3323;
+    --chalk:#F3EFE3;
+    --chalk-dim:#C9D6C4;
+    --yellow:#E8C25B;
+    --coral:#E2836B;
+    --green:#93C08C;
+    --blue:#89B7CB;
+    --shadow: 0 10px 30px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:
+      radial-gradient(circle at 15% 10%, rgba(255,255,255,0.035) 0, transparent 45%),
+      radial-gradient(circle at 85% 90%, rgba(255,255,255,0.03) 0, transparent 40%),
+      linear-gradient(180deg, var(--bg-1), var(--bg-2));
+    font-family:'Space Grotesk', sans-serif;
+    color:var(--chalk);
+    padding:24px;
+  }
+  .board-wrap{ width:100%; max-width:520px; }
+  .frame{
+    background: repeating-linear-gradient(45deg, #8a5a34, #8a5a34 6px, #7a4c2b 6px, #7a4c2b 12px);
+    border-radius: 22px;
+    padding:10px;
+    box-shadow: var(--shadow);
+  }
+  .panel{
+    background:
+      radial-gradient(ellipse at 30% 0%, rgba(255,255,255,0.05), transparent 60%),
+      var(--bg-1);
+    border-radius:16px;
+    padding:30px 26px 28px;
+    position:relative;
+  }
+  .panel::before{
+    content:"";
+    position:absolute; inset:0;
+    border-radius:16px;
+    background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px);
+    background-size: 14px 14px;
+    opacity:.35;
+    pointer-events:none;
+  }
+
+  a.back{
+    position:relative; z-index:1;
+    color:var(--chalk-dim); text-decoration:none; font-size:.85rem;
+    display:inline-flex; align-items:center; gap:6px; margin-bottom:14px;
+  }
+  a.back:hover{ color:var(--chalk); }
+  a.back::before{ content:"←"; }
+
+  h1{
+    font-family:'Kalam', cursive;
+    font-weight:700;
+    font-size: clamp(1.8rem, 5vw, 2.6rem);
+    margin:0 0 6px;
+    transform: rotate(-0.6deg);
+    position:relative; z-index:1;
+  }
+  .sub{
+    color:var(--chalk-dim);
+    font-size:.92rem;
+    margin:0 0 22px;
+    max-width:44ch;
+    line-height:1.5;
+    position:relative; z-index:1;
+  }
+
+  /* --- Scoreboard --- */
+  .scores{
+    display:flex; gap:10px; margin-bottom:20px; position:relative; z-index:1;
+  }
+  .scorecard{
+    flex:1;
+    background: rgba(255,255,255,0.04);
+    border:1.5px solid rgba(243,239,227,0.18);
+    border-radius:12px;
+    padding:10px 8px;
+    text-align:center;
+    transition: border-color .15s, background .15s;
+  }
+  .scorecard.active{
+    border-color: var(--yellow);
+    background: rgba(232,194,91,0.1);
+  }
+  .scorecard .mark{ font-family:'Kalam', cursive; font-weight:700; font-size:1.4rem; }
+  .scorecard.x .mark{ color: var(--blue); }
+  .scorecard.o .mark{ color: var(--coral); }
+  .scorecard.draw .mark{ color: var(--chalk-dim); font-size:1rem; }
+  .scorecard .n{ font-weight:700; font-size:1.3rem; font-variant-numeric: tabular-nums; }
+  .scorecard .lbl{ font-size:.68rem; color:var(--chalk-dim); margin-top:2px; }
+
+  /* --- Status --- */
+  .status{
+    text-align:center;
+    font-family:'Kalam', cursive;
+    font-weight:700;
+    font-size:1.15rem;
+    min-height:1.6em;
+    margin-bottom:14px;
+    position:relative; z-index:1;
+  }
+  .status .x{ color:var(--blue); }
+  .status .o{ color:var(--coral); }
+
+  /* --- Grid --- */
+  .grid{
+    position:relative; z-index:1;
+    display:grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap:8px;
+    max-width:340px;
+    margin:0 auto 22px;
+  }
+  .cell{
+    aspect-ratio: 1 / 1;
+    background: rgba(255,255,255,0.045);
+    border:1.5px solid rgba(243,239,227,0.22);
+    border-radius:12px;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Kalam', cursive;
+    font-weight:700;
+    font-size: clamp(2rem, 9vw, 2.8rem);
+    cursor:pointer;
+    transition: background .15s, border-color .15s, transform .08s;
+  }
+  .cell:hover:not(.filled):not(.locked){ background: rgba(255,255,255,0.09); border-color: rgba(243,239,227,0.45); }
+  .cell:active:not(.filled):not(.locked){ transform: scale(.96); }
+  .cell.x{ color: var(--blue); }
+  .cell.o{ color: var(--coral); }
+  .cell.win{ background: rgba(232,194,91,0.22); border-color: var(--yellow); }
+  .cell.filled, .cell.locked{ cursor:default; }
+
+  .pop{ animation: pop .2s ease-out; }
+  @keyframes pop{ 0%{ transform:scale(.5); opacity:0; } 100%{ transform:scale(1); opacity:1; } }
+
+  .actions{
+    display:flex; gap:10px; justify-content:center; flex-wrap:wrap;
+    position:relative; z-index:1;
+  }
+  .btn{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:700; font-size:.95rem;
+    background: var(--yellow); color:#2B2110;
+    border:none; border-radius: 10px;
+    padding:12px 24px;
+    cursor:pointer;
+    box-shadow: 0 4px 0 #b58f37;
+    transition: transform .08s, box-shadow .08s;
+  }
+  .btn:active{ transform:translateY(3px); box-shadow:0 1px 0 #b58f37; }
+  .btn.ghost{
+    background:transparent; color:var(--chalk);
+    border:1.5px solid rgba(243,239,227,0.3);
+    box-shadow:none; font-weight:600;
+  }
+  .btn.ghost:active{ transform:translateY(1px); }
+
+  @media (prefers-reduced-motion: reduce){
+    .pop{ animation:none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="board-wrap">
+  <div class="frame">
+    <div class="panel">
+      <a class="back" href="index.html">Zurück zur Übersicht</a>
+      <h1>Drei Gewinnt</h1>
+      <p class="sub">Klassisches Tic Tac Toe für zwei Spieler am selben Bildschirm &mdash; abwechselnd tippen, drei in einer Reihe gewinnt.</p>
+
+      <div class="scores">
+        <div class="scorecard x" id="scoreX">
+          <div class="mark">X</div>
+          <div class="n" id="scoreXn">0</div>
+          <div class="lbl">Siege</div>
+        </div>
+        <div class="scorecard draw" id="scoreDraw">
+          <div class="mark">Unentsch.</div>
+          <div class="n" id="scoreDrawn">0</div>
+          <div class="lbl">Runden</div>
+        </div>
+        <div class="scorecard o" id="scoreO">
+          <div class="mark">O</div>
+          <div class="n" id="scoreOn">0</div>
+          <div class="lbl">Siege</div>
+        </div>
+      </div>
+
+      <div class="status" id="status"></div>
+
+      <div class="grid" id="grid"></div>
+
+      <div class="actions">
+        <button class="btn" id="newRoundBtn">Neue Runde</button>
+        <button class="btn ghost" id="resetBtn">Punkte zurücksetzen</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  const WIN_LINES = [
+    [0,1,2],[3,4,5],[6,7,8],
+    [0,3,6],[1,4,7],[2,5,8],
+    [0,4,8],[2,4,6]
+  ];
+
+  const gridEl = document.getElementById('grid');
+  const statusEl = document.getElementById('status');
+  const newRoundBtn = document.getElementById('newRoundBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const scoreXEl = document.getElementById('scoreX');
+  const scoreOEl = document.getElementById('scoreO');
+  const scoreDrawEl = document.getElementById('scoreDraw');
+  const scoreXn = document.getElementById('scoreXn');
+  const scoreOn = document.getElementById('scoreOn');
+  const scoreDrawn = document.getElementById('scoreDrawn');
+
+  let board, current, over, scores;
+
+  function initScores(){ scores = { X:0, O:0, draw:0 }; }
+  initScores();
+
+  function renderScores(){
+    scoreXn.textContent = scores.X;
+    scoreOn.textContent = scores.O;
+    scoreDrawn.textContent = scores.draw;
+    scoreXEl.classList.toggle('active', !over && current === 'X');
+    scoreOEl.classList.toggle('active', !over && current === 'O');
+    scoreDrawEl.classList.remove('active');
+  }
+
+  function buildGrid(){
+    gridEl.innerHTML = '';
+    for(let i=0;i<9;i++){
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.setAttribute('data-i', i);
+      cell.addEventListener('click', function(){ handleMove(i, cell); });
+      gridEl.appendChild(cell);
+    }
+  }
+
+  function setStatus(){
+    if(over) return;
+    statusEl.innerHTML = 'Spieler <span class="' + current.toLowerCase() + '">' + current + '</span> ist dran';
+  }
+
+  function checkResult(){
+    for(const line of WIN_LINES){
+      const [a,b,c] = line;
+      if(board[a] && board[a] === board[b] && board[a] === board[c]){
+        return { winner: board[a], line: line };
+      }
+    }
+    if(board.every(function(v){ return v; })) return { winner: null, line: null, draw: true };
+    return null;
+  }
+
+  function handleMove(i, cell){
+    if(over || board[i]) return;
+    board[i] = current;
+    cell.textContent = current;
+    cell.classList.add(current.toLowerCase(), 'filled', 'pop');
+
+    const result = checkResult();
+    if(result){
+      over = true;
+      if(result.draw){
+        scores.draw++;
+        statusEl.textContent = 'Unentschieden!';
+      } else {
+        scores[result.winner]++;
+        statusEl.innerHTML = 'Spieler <span class="' + result.winner.toLowerCase() + '">' + result.winner + '</span> gewinnt! 🎉';
+        result.line.forEach(function(idx){
+          gridEl.querySelector('[data-i="' + idx + '"]').classList.add('win');
+        });
+      }
+      Array.from(gridEl.children).forEach(function(c){ c.classList.add('locked'); });
+      renderScores();
+      return;
+    }
+
+    current = current === 'X' ? 'O' : 'X';
+    setStatus();
+    renderScores();
+  }
+
+  function newRound(){
+    board = Array(9).fill(null);
+    current = 'X';
+    over = false;
+    buildGrid();
+    setStatus();
+    renderScores();
+  }
+
+  newRoundBtn.addEventListener('click', newRound);
+  resetBtn.addEventListener('click', function(){
+    initScores();
+    newRound();
+  });
+
+  newRound();
+})();
+</script>
+</body>
+</html>
