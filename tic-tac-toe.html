@@ -19,9 +19,11 @@
     --shadow: 0 10px 30px rgba(0,0,0,.35);
   }
   *{box-sizing:border-box;}
+  html,body{height:100%;}
   body{
     margin:0;
-    min-height:100vh;
+    height:100dvh;
+    overflow-y:auto;
     display:flex;
     align-items:center;
     justify-content:center;
@@ -31,13 +33,13 @@
       linear-gradient(180deg, var(--bg-1), var(--bg-2));
     font-family:'Space Grotesk', sans-serif;
     color:var(--chalk);
-    padding:24px;
+    padding: clamp(10px, 2.6vh, 24px);
   }
-  .board-wrap{ width:100%; max-width:520px; }
+  .board-wrap{ width:100%; max-width:460px; }
   .frame{
     background: repeating-linear-gradient(45deg, #8a5a34, #8a5a34 6px, #7a4c2b 6px, #7a4c2b 12px);
     border-radius: 22px;
-    padding:10px;
+    padding: clamp(6px, 1.2vh, 10px);
     box-shadow: var(--shadow);
   }
   .panel{
@@ -45,7 +47,7 @@
       radial-gradient(ellipse at 30% 0%, rgba(255,255,255,0.05), transparent 60%),
       var(--bg-1);
     border-radius:16px;
-    padding:30px 26px 28px;
+    padding: clamp(16px,3.2vh,30px) clamp(18px,4vw,26px) clamp(14px,2.8vh,28px);
     position:relative;
   }
   .panel::before{
@@ -60,8 +62,8 @@
 
   a.back{
     position:relative; z-index:1;
-    color:var(--chalk-dim); text-decoration:none; font-size:.85rem;
-    display:inline-flex; align-items:center; gap:6px; margin-bottom:14px;
+    color:var(--chalk-dim); text-decoration:none; font-size:clamp(.75rem,1.6vh,.85rem);
+    display:inline-flex; align-items:center; gap:6px; margin-bottom: clamp(8px,1.6vh,14px);
   }
   a.back:hover{ color:var(--chalk); }
   a.back::before{ content:"←"; }
@@ -69,30 +71,30 @@
   h1{
     font-family:'Kalam', cursive;
     font-weight:700;
-    font-size: clamp(1.8rem, 5vw, 2.6rem);
+    font-size: clamp(1.5rem, 4.6vh, 2.6rem);
     margin:0 0 6px;
     transform: rotate(-0.6deg);
     position:relative; z-index:1;
   }
   .sub{
     color:var(--chalk-dim);
-    font-size:.92rem;
-    margin:0 0 22px;
+    font-size: clamp(.78rem, 1.8vh, .92rem);
+    margin:0 0 clamp(12px,2.6vh,22px);
     max-width:44ch;
-    line-height:1.5;
+    line-height:1.45;
     position:relative; z-index:1;
   }
 
   /* --- Scoreboard --- */
   .scores{
-    display:flex; gap:10px; margin-bottom:20px; position:relative; z-index:1;
+    display:flex; gap:10px; margin-bottom: clamp(10px,2.2vh,20px); position:relative; z-index:1;
   }
   .scorecard{
     flex:1;
     background: rgba(255,255,255,0.04);
     border:1.5px solid rgba(243,239,227,0.18);
     border-radius:12px;
-    padding:10px 8px;
+    padding: clamp(6px,1.4vh,10px) 8px;
     text-align:center;
     transition: border-color .15s, background .15s;
   }
@@ -100,11 +102,11 @@
     border-color: var(--yellow);
     background: rgba(232,194,91,0.1);
   }
-  .scorecard .mark{ font-family:'Kalam', cursive; font-weight:700; font-size:1.4rem; }
+  .scorecard .mark{ font-family:'Kalam', cursive; font-weight:700; font-size: clamp(1.1rem,2.6vh,1.4rem); }
   .scorecard.x .mark{ color: var(--blue); }
   .scorecard.o .mark{ color: var(--coral); }
-  .scorecard.draw .mark{ color: var(--chalk-dim); font-size:1rem; }
-  .scorecard .n{ font-weight:700; font-size:1.3rem; font-variant-numeric: tabular-nums; }
+  .scorecard.draw .mark{ color: var(--chalk-dim); font-size: clamp(.85rem,1.9vh,1rem); }
+  .scorecard .n{ font-weight:700; font-size: clamp(1.05rem,2.4vh,1.3rem); font-variant-numeric: tabular-nums; }
   .scorecard .lbl{ font-size:.68rem; color:var(--chalk-dim); margin-top:2px; }
 
   /* --- Status --- */
@@ -112,9 +114,9 @@
     text-align:center;
     font-family:'Kalam', cursive;
     font-weight:700;
-    font-size:1.15rem;
+    font-size: clamp(.95rem, 2.4vh, 1.15rem);
     min-height:1.6em;
-    margin-bottom:14px;
+    margin-bottom: clamp(8px,1.8vh,14px);
     position:relative; z-index:1;
   }
   .status .x{ color:var(--blue); }
@@ -125,9 +127,9 @@
     position:relative; z-index:1;
     display:grid;
     grid-template-columns: repeat(3, 1fr);
-    gap:8px;
-    max-width:340px;
-    margin:0 auto 22px;
+    gap: clamp(6px,1.4vh,8px);
+    max-width: min(340px, 34vh, 78vw);
+    margin: 0 auto clamp(10px,2.4vh,22px);
   }
   .cell{
     aspect-ratio: 1 / 1;
@@ -137,7 +139,7 @@
     display:flex; align-items:center; justify-content:center;
     font-family:'Kalam', cursive;
     font-weight:700;
-    font-size: clamp(2rem, 9vw, 2.8rem);
+    font-size: clamp(1.4rem, 8vh, 2.8rem);
     cursor:pointer;
     transition: background .15s, border-color .15s, transform .08s;
   }
@@ -152,15 +154,15 @@
   @keyframes pop{ 0%{ transform:scale(.5); opacity:0; } 100%{ transform:scale(1); opacity:1; } }
 
   .actions{
-    display:flex; gap:10px; justify-content:center; flex-wrap:wrap;
+    display:flex; gap: clamp(8px,1.6vh,10px); justify-content:center; flex-wrap:wrap;
     position:relative; z-index:1;
   }
   .btn{
     font-family:'Space Grotesk', sans-serif;
-    font-weight:700; font-size:.95rem;
+    font-weight:700; font-size: clamp(.82rem,1.8vh,.95rem);
     background: var(--yellow); color:#2B2110;
     border:none; border-radius: 10px;
-    padding:12px 24px;
+    padding: clamp(9px,1.8vh,12px) clamp(16px,3.2vw,24px);
     cursor:pointer;
     box-shadow: 0 4px 0 #b58f37;
     transition: transform .08s, box-shadow .08s;

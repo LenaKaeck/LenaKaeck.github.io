@@ -19,9 +19,11 @@
     --shadow: 0 10px 30px rgba(0,0,0,.35);
   }
   *{box-sizing:border-box;}
+  html,body{height:100%;}
   body{
     margin:0;
-    min-height:100vh;
+    height:100dvh;
+    overflow-y:auto;
     display:flex;
     align-items:center;
     justify-content:center;
@@ -31,22 +33,27 @@
       linear-gradient(180deg, var(--bg-1), var(--bg-2));
     font-family:'Space Grotesk', sans-serif;
     color:var(--chalk);
-    padding:24px;
+    padding: clamp(10px, 2.4vh, 24px);
   }
-  .board-wrap{ width:100%; max-width:1000px; }
+  .board-wrap{ width:100%; max-width:1400px; height:100%; }
   .frame{
     background: repeating-linear-gradient(45deg, #8a5a34, #8a5a34 6px, #7a4c2b 6px, #7a4c2b 12px);
     border-radius: 22px;
-    padding:10px;
+    padding: clamp(5px, 1vh, 10px);
     box-shadow: var(--shadow);
+    height:100%;
   }
   .panel{
     background:
       radial-gradient(ellipse at 30% 0%, rgba(255,255,255,0.05), transparent 60%),
       var(--bg-1);
     border-radius:16px;
-    padding:30px 26px 28px;
+    padding: clamp(12px,2.2vh,26px) clamp(14px,2.4vw,26px);
     position:relative;
+    height:100%;
+    display:flex;
+    flex-direction:column;
+    min-height:0;
   }
   .panel::before{
     content:"";
@@ -58,10 +65,15 @@
     pointer-events:none;
   }
 
-  a.back{
+  .head-row{
     position:relative; z-index:1;
-    color:var(--chalk-dim); text-decoration:none; font-size:.85rem;
-    display:inline-flex; align-items:center; gap:6px; margin-bottom:14px;
+    display:flex; align-items:baseline; flex-wrap:wrap;
+    gap: 6px 18px;
+    margin-bottom: clamp(8px, 1.6vh, 16px);
+  }
+  a.back{
+    color:var(--chalk-dim); text-decoration:none; font-size:clamp(.72rem,1.4vh,.85rem);
+    display:inline-flex; align-items:center; gap:6px;
   }
   a.back:hover{ color:var(--chalk); }
   a.back::before{ content:"←"; }
@@ -69,22 +81,23 @@
   h1{
     font-family:'Kalam', cursive;
     font-weight:700;
-    font-size: clamp(1.8rem, 5vw, 2.6rem);
-    margin:0 0 20px;
+    font-size: clamp(1.25rem, 3.4vh, 2.2rem);
+    margin:0;
     transform: rotate(-0.6deg);
-    position:relative; z-index:1;
   }
 
   /* --- Anzeigetafel --- */
   .scores{
-    display:flex; align-items:stretch; gap:10px; margin-bottom:16px; position:relative; z-index:1;
+    position:relative; z-index:1;
+    display:flex; align-items:stretch; gap: clamp(8px,1.4vw,10px);
+    margin-bottom: clamp(8px, 1.6vh, 16px);
   }
   .scorecard{
     flex:1;
     background: rgba(255,255,255,0.04);
     border:1.5px solid rgba(243,239,227,0.18);
     border-radius:12px;
-    padding:10px 10px 8px;
+    padding: clamp(6px,1.2vh,10px) 10px clamp(5px,1vh,8px);
     text-align:center;
     transition: border-color .15s, background .15s;
   }
@@ -96,7 +109,8 @@
     background:transparent;
     border:none;
     border-bottom:1.5px dashed rgba(243,239,227,0.3);
-    font-family:'Kalam', cursive; font-weight:700; font-size:1.25rem;
+    font-family:'Kalam', cursive; font-weight:700;
+    font-size: clamp(.9rem, 1.8vh, 1.25rem);
     text-align:center;
     padding:0 0 2px;
     border-radius:0;
@@ -104,23 +118,30 @@
   .scorecard.a input{ color: var(--blue); }
   .scorecard.b input{ color: var(--coral); }
   .scorecard input:focus-visible{ outline:2px solid var(--yellow); outline-offset:3px; border-bottom-color:transparent; }
-  .scorecard .n{ font-weight:700; font-size:2.2rem; line-height:1.15; margin-top:4px; font-variant-numeric: tabular-nums; }
-  .scorecard .lbl{ font-size:.68rem; color:var(--chalk-dim); }
+  .scorecard .n{ font-weight:700; font-size: clamp(1.4rem, 3.6vh, 2.2rem); line-height:1.1; margin-top:2px; font-variant-numeric: tabular-nums; }
+  .scorecard .lbl{ font-size:.66rem; color:var(--chalk-dim); }
   .scorecard .n.bump{ animation: pop .45s ease-out; }
   .colon{
-    align-self:center; font-family:'Kalam', cursive; font-weight:700; font-size:2rem; color:var(--chalk-dim);
+    align-self:center; font-family:'Kalam', cursive; font-weight:700; font-size: clamp(1.4rem,3vh,2rem); color:var(--chalk-dim);
   }
 
-  /* --- Stadion --- */
-  .pitch-wrap{
+  /* --- Spielfläche: Stadion + Bedienung nebeneinander --- */
+  .main{
     position:relative; z-index:1;
+    flex:1; min-height:0;
+    display:flex;
+    gap: clamp(10px, 1.8vw, 20px);
+  }
+
+  .pitch-wrap{
+    flex:1; min-height:0;
+    background:#1a2f22;
     border-radius:16px;
     overflow:hidden;
     box-shadow: 0 8px 24px rgba(0,0,0,.4);
-    margin-bottom:20px;
-    line-height:0;
+    position:relative;
   }
-  .pitch-wrap svg{ width:100%; height:auto; display:block; }
+  .pitch-wrap svg{ width:100%; height:100%; display:block; }
   #ballPos{ transition: transform .7s cubic-bezier(.25,.8,.3,1); }
   #ballSpin{ transition: transform .7s cubic-bezier(.25,.8,.3,1); }
   .stands.cheer{ animation: crowd .45s ease-in-out 7; }
@@ -148,14 +169,14 @@
   .banner{ text-align:center; line-height:1.1; animation: banner .6s cubic-bezier(.2,1.4,.4,1) both; }
   .banner .tor{
     font-family:'Kalam', cursive; font-weight:700;
-    font-size: clamp(2.6rem, 14vw, 7rem);
+    font-size: clamp(2rem, 11vh, 6rem);
     color:var(--yellow);
     text-shadow: 0 4px 0 #8a5a34, 0 8px 24px rgba(0,0,0,.55);
     transform: rotate(-4deg);
   }
   .banner .who{
     font-family:'Kalam', cursive; font-weight:700;
-    font-size: clamp(1.1rem, 4.5vw, 2rem);
+    font-size: clamp(1rem, 3.6vh, 1.8rem);
     color:var(--chalk);
     text-shadow: 0 2px 10px rgba(0,0,0,.7);
     margin-top:4px;
@@ -178,17 +199,19 @@
   @keyframes fadein{ from{ opacity:0; } to{ opacity:1; } }
   @keyframes pop{ 0%{ transform:scale(.5); opacity:.4; } 60%{ transform:scale(1.35); } 100%{ transform:scale(1); opacity:1; } }
 
-  /* --- Bedienung --- */
-  .actions{
-    display:flex; gap:12px; justify-content:space-between; flex-wrap:wrap;
-    position:relative; z-index:1;
+  /* --- Bedienung (neben dem Feld) --- */
+  .side-col{
+    flex: 0 0 clamp(160px, 20vw, 230px);
+    display:flex;
+    flex-direction:column;
+    gap: clamp(8px, 1.6vh, 14px);
+    min-height:0;
   }
   .btn{
     font-family:'Space Grotesk', sans-serif;
-    font-weight:700; font-size:.95rem;
+    font-weight:700; font-size: clamp(.78rem, 1.6vh, .95rem);
     background: var(--yellow); color:#2B2110;
     border:none; border-radius: 10px;
-    padding:12px 24px;
     cursor:pointer;
     box-shadow: 0 4px 0 #b58f37;
     transition: transform .08s, box-shadow .08s, opacity .15s;
@@ -196,7 +219,12 @@
   .btn:active:not(:disabled){ transform:translateY(3px); box-shadow:0 1px 0 #b58f37; }
   .btn:focus-visible{ outline:2px solid var(--chalk); outline-offset:3px; }
   .btn:disabled{ opacity:.45; cursor:default; }
-  .btn.team{ flex:1; min-width:200px; font-size:1.05rem; padding:16px 20px; }
+  .btn.team{
+    flex:1; min-height:0;
+    display:flex; align-items:center; justify-content:center;
+    text-align:center; line-height:1.25;
+    padding: 10px 12px;
+  }
   .btn.team.a{ background:var(--blue); box-shadow:0 4px 0 #5f8ea3; }
   .btn.team.b{ background:var(--coral); box-shadow:0 4px 0 #b5614b; }
   .btn.team.a:active:not(:disabled){ box-shadow:0 1px 0 #5f8ea3; }
@@ -205,17 +233,23 @@
     background:transparent; color:var(--chalk);
     border:1.5px solid rgba(243,239,227,0.3);
     box-shadow:none; font-weight:600;
+    padding: clamp(7px,1.4vh,10px) 10px;
   }
   .btn.ghost:active:not(:disabled){ transform:translateY(1px); }
   .extras{
-    display:flex; gap:10px; justify-content:center; flex-wrap:wrap;
-    margin-top:14px; position:relative; z-index:1;
+    flex:0 0 auto;
+    display:flex; gap: clamp(6px,1.2vh,8px);
   }
+  .extras .btn{ flex:1; }
 
-  @media (max-width:520px){
-    .panel{ padding:24px 16px 22px; }
-    .scorecard input{ font-size:1.05rem; }
-    .btn.team{ min-width:100%; }
+  @media (max-width:760px), (orientation:portrait){
+    body{ height:auto; min-height:100dvh; align-items:flex-start; }
+    .board-wrap, .frame, .panel{ height:auto; }
+    .main{ flex-direction:column; }
+    .pitch-wrap{ flex:0 0 auto; aspect-ratio: 1000 / 620; }
+    .side-col{ flex:0 0 auto; flex-direction:row; flex-wrap:wrap; }
+    .btn.team{ flex:1 1 45%; min-height:52px; }
+    .extras{ flex:1 1 100%; }
   }
   @media (prefers-reduced-motion: reduce){
     #ballPos, #ballSpin{ transition:none; }
@@ -229,8 +263,10 @@
 <div class="board-wrap">
   <div class="frame">
     <div class="panel">
-      <a class="back" href="index.html">Zurück zur Übersicht</a>
-      <h1>Tafelfußball</h1>
+      <div class="head-row">
+        <a class="back" href="index.html">Zurück zur Übersicht</a>
+        <h1>Tafelfußball</h1>
+      </div>
 
       <div class="scores">
         <div class="scorecard a" id="cardA">
@@ -246,116 +282,118 @@
         </div>
       </div>
 
-      <div class="pitch-wrap" id="pitchWrap">
-        <svg viewBox="0 0 1000 620" role="img" aria-label="Fußballstadion von oben mit Ball auf dem Spielfeld">
-          <defs>
-            <pattern id="crowd" width="14" height="14" patternUnits="userSpaceOnUse">
-              <rect width="14" height="14" fill="#1a2f22"/>
-              <circle cx="3.5" cy="3.5" r="2.6" fill="#E2836B" opacity=".55"/>
-              <circle cx="10.5" cy="3.5" r="2.6" fill="#89B7CB" opacity=".55"/>
-              <circle cx="3.5" cy="10.5" r="2.6" fill="#E8C25B" opacity=".5"/>
-              <circle cx="10.5" cy="10.5" r="2.6" fill="#C9D6C4" opacity=".4"/>
-            </pattern>
-            <pattern id="mow" width="164" height="440" patternUnits="userSpaceOnUse" x="90" y="90">
-              <rect width="82" height="440" fill="#3f8046"/>
-              <rect x="82" width="82" height="440" fill="#48904f"/>
-            </pattern>
-            <pattern id="net" width="6" height="6" patternUnits="userSpaceOnUse">
-              <rect width="6" height="6" fill="rgba(0,0,0,.25)"/>
-              <path d="M0 0H6M0 0V6" stroke="#F3EFE3" stroke-width=".8" opacity=".7" fill="none"/>
-            </pattern>
-            <radialGradient id="flood">
-              <stop offset="0" stop-color="#fff8d8" stop-opacity=".75"/>
-              <stop offset="1" stop-color="#fff8d8" stop-opacity="0"/>
-            </radialGradient>
-          </defs>
+      <div class="main">
+        <div class="pitch-wrap" id="pitchWrap">
+          <svg viewBox="0 0 1000 620" role="img" aria-label="Fußballstadion von oben mit Ball auf dem Spielfeld" preserveAspectRatio="xMidYMid meet">
+            <defs>
+              <pattern id="crowd" width="14" height="14" patternUnits="userSpaceOnUse">
+                <rect width="14" height="14" fill="#1a2f22"/>
+                <circle cx="3.5" cy="3.5" r="2.6" fill="#E2836B" opacity=".55"/>
+                <circle cx="10.5" cy="3.5" r="2.6" fill="#89B7CB" opacity=".55"/>
+                <circle cx="3.5" cy="10.5" r="2.6" fill="#E8C25B" opacity=".5"/>
+                <circle cx="10.5" cy="10.5" r="2.6" fill="#C9D6C4" opacity=".4"/>
+              </pattern>
+              <pattern id="mow" width="164" height="440" patternUnits="userSpaceOnUse" x="90" y="90">
+                <rect width="82" height="440" fill="#3f8046"/>
+                <rect x="82" width="82" height="440" fill="#48904f"/>
+              </pattern>
+              <pattern id="net" width="6" height="6" patternUnits="userSpaceOnUse">
+                <rect width="6" height="6" fill="rgba(0,0,0,.25)"/>
+                <path d="M0 0H6M0 0V6" stroke="#F3EFE3" stroke-width=".8" opacity=".7" fill="none"/>
+              </pattern>
+              <radialGradient id="flood">
+                <stop offset="0" stop-color="#fff8d8" stop-opacity=".75"/>
+                <stop offset="1" stop-color="#fff8d8" stop-opacity="0"/>
+              </radialGradient>
+            </defs>
 
-          <!-- Tribüne -->
-          <rect class="stands" id="stands" x="-10" y="-10" width="1020" height="640" fill="url(#crowd)"/>
-          <rect x="14" y="14" width="972" height="592" rx="26" fill="none" stroke="#0f1d15" stroke-width="3" opacity=".7"/>
-          <rect x="32" y="32" width="936" height="556" rx="18" fill="none" stroke="#0f1d15" stroke-width="3" opacity=".7"/>
-          <circle cx="28" cy="28" r="40" fill="url(#flood)"/>
-          <circle cx="972" cy="28" r="40" fill="url(#flood)"/>
-          <circle cx="28" cy="592" r="40" fill="url(#flood)"/>
-          <circle cx="972" cy="592" r="40" fill="url(#flood)"/>
+            <!-- Tribüne -->
+            <rect class="stands" id="stands" x="-10" y="-10" width="1020" height="640" fill="url(#crowd)"/>
+            <rect x="14" y="14" width="972" height="592" rx="26" fill="none" stroke="#0f1d15" stroke-width="3" opacity=".7"/>
+            <rect x="32" y="32" width="936" height="556" rx="18" fill="none" stroke="#0f1d15" stroke-width="3" opacity=".7"/>
+            <circle cx="28" cy="28" r="40" fill="url(#flood)"/>
+            <circle cx="972" cy="28" r="40" fill="url(#flood)"/>
+            <circle cx="28" cy="592" r="40" fill="url(#flood)"/>
+            <circle cx="972" cy="592" r="40" fill="url(#flood)"/>
 
-          <!-- Umlauf -->
-          <rect x="50" y="56" width="900" height="508" rx="8" fill="#1B3323" stroke="#0f1d15" stroke-width="3"/>
+            <!-- Umlauf -->
+            <rect x="50" y="56" width="900" height="508" rx="8" fill="#1B3323" stroke="#0f1d15" stroke-width="3"/>
 
-          <!-- Rasen -->
-          <rect x="90" y="90" width="820" height="440" fill="url(#mow)"/>
+            <!-- Rasen -->
+            <rect x="90" y="90" width="820" height="440" fill="url(#mow)"/>
 
-          <!-- Spielfeldlinien -->
-          <g fill="none" stroke="#F3EFE3" stroke-width="3" stroke-linecap="round" opacity=".9">
-            <rect x="90" y="90" width="820" height="440"/>
-            <line x1="500" y1="90" x2="500" y2="530"/>
-            <circle cx="500" cy="310" r="62"/>
-            <rect x="90" y="180" width="129" height="260"/>
-            <rect x="781" y="180" width="129" height="260"/>
-            <rect x="90" y="251" width="43" height="118"/>
-            <rect x="867" y="251" width="43" height="118"/>
-            <path d="M219 253.5 A71 71 0 0 1 219 366.5"/>
-            <path d="M781 253.5 A71 71 0 0 0 781 366.5"/>
-            <path d="M90 104 A14 14 0 0 0 104 90"/>
-            <path d="M896 90 A14 14 0 0 0 910 104"/>
-            <path d="M910 516 A14 14 0 0 0 896 530"/>
-            <path d="M104 530 A14 14 0 0 0 90 516"/>
-          </g>
-          <g fill="#F3EFE3" opacity=".9">
-            <circle cx="500" cy="310" r="4.5"/>
-            <circle cx="176" cy="310" r="3.5"/>
-            <circle cx="824" cy="310" r="3.5"/>
-          </g>
+            <!-- Spielfeldlinien -->
+            <g fill="none" stroke="#F3EFE3" stroke-width="3" stroke-linecap="round" opacity=".9">
+              <rect x="90" y="90" width="820" height="440"/>
+              <line x1="500" y1="90" x2="500" y2="530"/>
+              <circle cx="500" cy="310" r="62"/>
+              <rect x="90" y="180" width="129" height="260"/>
+              <rect x="781" y="180" width="129" height="260"/>
+              <rect x="90" y="251" width="43" height="118"/>
+              <rect x="867" y="251" width="43" height="118"/>
+              <path d="M219 253.5 A71 71 0 0 1 219 366.5"/>
+              <path d="M781 253.5 A71 71 0 0 0 781 366.5"/>
+              <path d="M90 104 A14 14 0 0 0 104 90"/>
+              <path d="M896 90 A14 14 0 0 0 910 104"/>
+              <path d="M910 516 A14 14 0 0 0 896 530"/>
+              <path d="M104 530 A14 14 0 0 0 90 516"/>
+            </g>
+            <g fill="#F3EFE3" opacity=".9">
+              <circle cx="500" cy="310" r="4.5"/>
+              <circle cx="176" cy="310" r="3.5"/>
+              <circle cx="824" cy="310" r="3.5"/>
+            </g>
 
-          <!-- Markierungen der Ballstationen (jeweils auf einer Linie) -->
-          <g fill="#F3EFE3" opacity=".55">
-            <circle cx="133" cy="310" r="3"/>
-            <circle cx="219" cy="310" r="3"/>
-            <circle cx="781" cy="310" r="3"/>
-            <circle cx="867" cy="310" r="3"/>
-          </g>
+            <!-- Markierungen der Ballstationen (jeweils auf einer Linie) -->
+            <g fill="#F3EFE3" opacity=".55">
+              <circle cx="133" cy="310" r="3"/>
+              <circle cx="219" cy="310" r="3"/>
+              <circle cx="781" cy="310" r="3"/>
+              <circle cx="867" cy="310" r="3"/>
+            </g>
 
-          <!-- Tore -->
-          <g class="goal" id="goalL">
-            <rect x="60" y="286.5" width="30" height="47" fill="url(#net)" stroke="#F3EFE3" stroke-width="3"/>
-          </g>
-          <g class="goal" id="goalR">
-            <rect x="910" y="286.5" width="30" height="47" fill="url(#net)" stroke="#F3EFE3" stroke-width="3"/>
-          </g>
+            <!-- Tore -->
+            <g class="goal" id="goalL">
+              <rect x="60" y="286.5" width="30" height="47" fill="url(#net)" stroke="#F3EFE3" stroke-width="3"/>
+            </g>
+            <g class="goal" id="goalR">
+              <rect x="910" y="286.5" width="30" height="47" fill="url(#net)" stroke="#F3EFE3" stroke-width="3"/>
+            </g>
 
-          <!-- Ball -->
-          <g id="ballPos" style="transform: translate(500px, 310px);">
-            <ellipse cx="2" cy="5" rx="12" ry="9" fill="#000" opacity=".3"/>
-            <g id="ballSpin">
-              <circle r="12" fill="#fff" stroke="#1c1c1c" stroke-width="1.2"/>
-              <polygon points="0,-4.6 4.4,-1.4 2.7,3.7 -2.7,3.7 -4.4,-1.4" fill="#1c1c1c"/>
-              <g fill="#1c1c1c">
-                <circle cx="0" cy="-10" r="1.7"/>
-                <circle cx="9.5" cy="-3" r="1.7"/>
-                <circle cx="5.9" cy="8" r="1.7"/>
-                <circle cx="-5.9" cy="8" r="1.7"/>
-                <circle cx="-9.5" cy="-3" r="1.7"/>
+            <!-- Ball -->
+            <g id="ballPos" style="transform: translate(500px, 310px);">
+              <ellipse cx="2" cy="5" rx="12" ry="9" fill="#000" opacity=".3"/>
+              <g id="ballSpin">
+                <circle r="12" fill="#fff" stroke="#1c1c1c" stroke-width="1.2"/>
+                <polygon points="0,-4.6 4.4,-1.4 2.7,3.7 -2.7,3.7 -4.4,-1.4" fill="#1c1c1c"/>
+                <g fill="#1c1c1c">
+                  <circle cx="0" cy="-10" r="1.7"/>
+                  <circle cx="9.5" cy="-3" r="1.7"/>
+                  <circle cx="5.9" cy="8" r="1.7"/>
+                  <circle cx="-5.9" cy="8" r="1.7"/>
+                  <circle cx="-9.5" cy="-3" r="1.7"/>
+                </g>
               </g>
             </g>
-          </g>
-        </svg>
+          </svg>
 
-        <div class="celebrate" id="celebrate" hidden>
-          <div class="confetti" id="confetti"></div>
-          <div class="banner">
-            <div class="tor">TOOOR!</div>
-            <div class="who" id="celebWho"></div>
+          <div class="celebrate" id="celebrate" hidden>
+            <div class="confetti" id="confetti"></div>
+            <div class="banner">
+              <div class="tor">TOOOR!</div>
+              <div class="who" id="celebWho"></div>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div class="actions">
-        <button class="btn team a" id="btnA" type="button"></button>
-        <button class="btn team b" id="btnB" type="button"></button>
-      </div>
-      <div class="extras">
-        <button class="btn ghost" id="undoBtn" type="button">Rückgängig</button>
-        <button class="btn ghost" id="resetBtn" type="button">Neues Spiel</button>
+        <div class="side-col">
+          <button class="btn team a" id="btnA" type="button"></button>
+          <button class="btn team b" id="btnB" type="button"></button>
+          <div class="extras">
+            <button class="btn ghost" id="undoBtn" type="button">Rückgängig</button>
+            <button class="btn ghost" id="resetBtn" type="button">Neues Spiel</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
