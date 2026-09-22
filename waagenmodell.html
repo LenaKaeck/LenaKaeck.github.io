@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Waagemodell</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-1:#24402F;
+    --bg-2:#1B3323;
+    --chalk:#F3EFE3;
+    --chalk-dim:#C9D6C4;
+    --yellow:#E8C25B;
+    --coral:#E2836B;
+    --green:#93C08C;
+    --blue:#89B7CB;
+    --w2:#D9A63F;
+    --w5:#C97F3A;
+    --shadow: 0 10px 30px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    height:100dvh;
+    overflow-y:auto;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:
+      radial-gradient(circle at 15% 10%, rgba(255,255,255,0.035) 0, transparent 45%),
+      radial-gradient(circle at 85% 90%, rgba(255,255,255,0.03) 0, transparent 40%),
+      linear-gradient(180deg, var(--bg-1), var(--bg-2));
+    font-family:'Space Grotesk', sans-serif;
+    color:var(--chalk);
+    padding: clamp(10px, 2.4vh, 24px);
+  }
+  .board-wrap{ width:100%; max-width:1300px; height:100%; }
+  .frame{
+    background: repeating-linear-gradient(45deg, #8a5a34, #8a5a34 6px, #7a4c2b 6px, #7a4c2b 12px);
+    border-radius: 22px;
+    padding: clamp(5px, 1vh, 10px);
+    box-shadow: var(--shadow);
+    height:100%;
+  }
+  .panel{
+    background:
+      radial-gradient(ellipse at 30% 0%, rgba(255,255,255,0.05), transparent 60%),
+      var(--bg-1);
+    border-radius:16px;
+    padding: clamp(12px,2.2vh,26px) clamp(14px,2.4vw,26px);
+    position:relative;
+    height:100%;
+    display:flex;
+    flex-direction:column;
+    min-height:0;
+  }
+  .panel::before{
+    content:"";
+    position:absolute; inset:0;
+    border-radius:16px;
+    background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px);
+    background-size: 14px 14px;
+    opacity:.35;
+    pointer-events:none;
+  }
+
+  .head-row{
+    position:relative; z-index:1;
+    display:flex; align-items:baseline; flex-wrap:wrap;
+    gap: 6px 18px;
+    margin-bottom: clamp(8px, 1.6vh, 16px);
+  }
+  a.back{
+    color:var(--chalk-dim); text-decoration:none; font-size:clamp(.72rem,1.4vh,.85rem);
+    display:inline-flex; align-items:center; gap:6px;
+  }
+  a.back:hover{ color:var(--chalk); }
+  a.back::before{ content:"←"; }
+
+  h1{
+    font-family:'Kalam', cursive;
+    font-weight:700;
+    font-size: clamp(1.25rem, 3.4vh, 2.2rem);
+    margin:0;
+    transform: rotate(-0.6deg);
+  }
+
+  /* --- Hauptbereich: Sidebar links, Waage rechts --- */
+  .main{
+    position:relative; z-index:1;
+    flex:1; min-height:0;
+    display:flex;
+    gap: clamp(14px, 2vw, 26px);
+  }
+
+  .sidebar{
+    flex: 0 0 clamp(190px, 23vw, 280px);
+    display:flex; flex-direction:column;
+    gap: clamp(10px, 1.6vh, 16px);
+    min-height:0;
+    overflow-y:auto;
+  }
+  .sub{
+    color:var(--chalk-dim);
+    font-size: clamp(.72rem, 1.5vh, .88rem);
+    margin:0;
+    line-height:1.4;
+  }
+
+  /* --- Werkzeugleiste (links, untereinander) --- */
+  .toolbar{
+    display:flex; flex-direction:column; gap: clamp(6px,1.2vh,10px);
+  }
+  .btn{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:700; font-size: clamp(.76rem,1.6vh,.9rem);
+    background: var(--yellow); color:#2B2110;
+    border:none; border-radius: 10px;
+    padding: clamp(8px,1.6vh,12px) 14px;
+    cursor:pointer;
+    box-shadow: 0 4px 0 #b58f37;
+    transition: transform .08s, box-shadow .08s, opacity .15s;
+    width:100%;
+  }
+  .btn:active:not(:disabled){ transform:translateY(3px); box-shadow:0 1px 0 #b58f37; }
+  .btn:focus-visible{ outline:2px solid var(--chalk); outline-offset:3px; }
+  .btn:disabled{ opacity:.4; cursor:default; }
+  .btn.ghost{
+    background:transparent; color:var(--chalk);
+    border:1.5px solid rgba(243,239,227,0.3);
+    box-shadow:none; font-weight:600;
+  }
+  .btn.ghost:active:not(:disabled){ transform:translateY(1px); }
+  .btn.small{ padding: clamp(6px,1.2vh,8px) 10px; font-size: clamp(.68rem,1.4vh,.78rem); width:auto; }
+
+  .reveal{
+    font-family:'Kalam', cursive;
+    color:var(--yellow);
+    font-size: clamp(.78rem, 1.6vh, .95rem);
+    margin:0;
+    background: rgba(232,194,91,0.1);
+    border:1.5px dashed rgba(232,194,91,0.5);
+    border-radius:10px;
+    padding: clamp(6px,1.2vh,8px) 12px;
+  }
+  .reveal[hidden]{ display:none; }
+
+  /* --- Waage-Spalte --- */
+  .stage-col{
+    flex:1; min-width:0; min-height:0;
+    display:flex; flex-direction:column;
+    gap: clamp(8px, 1.4vh, 14px);
+  }
+
+  /* --- Die Waage --- */
+  .scale-stage{
+    position:relative;
+    flex:1; min-height:0;
+    width:100%;
+  }
+  .stand-base{
+    position:absolute; left:50%; bottom:0; transform:translateX(-50%);
+    width:32%; height:12px;
+    background: linear-gradient(180deg,#8a5a34,#6b4325);
+    border-radius:6px;
+    box-shadow: 0 6px 14px rgba(0,0,0,.35);
+  }
+  .stand-post{
+    position:absolute; left:50%; bottom:10px; transform:translateX(-50%);
+    width:14px; height:44%;
+    background: linear-gradient(90deg,#6b4325,#9c6b3f 45%,#6b4325);
+    border-radius:4px 4px 2px 2px;
+  }
+  .pivot-dot{
+    position:absolute; left:50%; bottom: calc(10px + 44%);
+    transform:translate(-50%,50%);
+    width:15px; height:15px; border-radius:50%;
+    background: var(--yellow); border:2px solid #6b4325;
+    z-index:3;
+  }
+  .beam-assembly{
+    position:absolute; left:50%; bottom: calc(10px + 44%);
+    width:94%;
+    transform-origin: 50% 100%;
+    transform: translateX(-50%) rotate(var(--tilt, 0deg));
+    transition: transform .55s cubic-bezier(.32,1.45,.4,1);
+    display:flex; flex-direction:column; align-items:stretch;
+    z-index:2;
+  }
+  .trays-row{
+    display:flex; justify-content:space-between; align-items:flex-end;
+    gap:6%;
+  }
+  .tray{
+    flex:1; min-height: clamp(72px, 17vh, 112px);
+    background: linear-gradient(180deg,#e7ece9,#b7c0ba);
+    border:2px solid #6f7b74;
+    border-radius: 12px 12px 5px 5px;
+    padding:8px 6px 6px;
+    display:flex; flex-wrap:wrap; align-content:flex-end; justify-content:center;
+    gap:5px;
+  }
+  .beam-bar{
+    height:9px; background: var(--yellow); border-radius:4px;
+    margin-top:-3px;
+    box-shadow: 0 3px 6px rgba(0,0,0,.35);
+  }
+  .equals-mark{
+    position:absolute; left:50%;
+    bottom: calc(10px + 44% + 46px);
+    transform:translateX(-50%);
+    font-family:'Kalam', cursive; font-weight:700;
+    font-size: clamp(1.5rem, 5vw, 2rem);
+    color: var(--chalk-dim);
+    z-index:4;
+    pointer-events:none;
+  }
+
+  .chip{
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Kalam', cursive; font-weight:700;
+    line-height:1;
+    border:none;
+    cursor:pointer;
+    padding:0;
+    position:relative;
+    transition: transform .1s, filter .1s;
+  }
+  .chip:hover{ filter:brightness(1.15); }
+  .chip:active{ transform:scale(.94); }
+  .chip:focus-visible{ outline:2px solid var(--chalk); outline-offset:2px; }
+  .chip.x{
+    width:clamp(22px,4.6vh,28px); height:clamp(22px,4.6vh,28px);
+    background: var(--blue);
+    color:#12303c;
+    border-radius:7px;
+    font-size:clamp(.8rem,1.8vh,1rem);
+  }
+  .chip.w1{ width:clamp(16px,3.4vh,20px); height:clamp(16px,3.4vh,20px); border-radius:50%; background: radial-gradient(circle at 35% 30%, #fff6df, var(--yellow)); border:1px solid #b58f37; color:#5c451c; font-size:clamp(.5rem,1.1vh,.6rem); }
+  .chip.w2{ width:clamp(18px,3.8vh,23px); height:clamp(18px,3.8vh,23px); border-radius:50%; background: radial-gradient(circle at 35% 30%, #f6e2ae, var(--w2)); border:1px solid #9c7629; color:#43310e; font-size:clamp(.55rem,1.2vh,.65rem); }
+  .chip.w5{ width:clamp(20px,4.2vh,26px); height:clamp(20px,4.2vh,26px); border-radius:50%; background: radial-gradient(circle at 35% 30%, #f2c99a, var(--w5)); border:1px solid #955c22; color:#402c10; font-size:clamp(.6rem,1.3vh,.7rem); }
+  .chip.w10{ width:clamp(22px,4.6vh,29px); height:clamp(22px,4.6vh,29px); border-radius:50%; background: radial-gradient(circle at 35% 30%, #f3ada0, var(--coral)); border:1px solid #a5543f; color:#4a1f16; font-size:clamp(.65rem,1.4vh,.75rem); }
+
+  /* --- Steuerung pro Waagschale --- */
+  .pan-controls-row{
+    position:relative; z-index:1;
+    flex: 0 0 auto;
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap: clamp(10px,1.6vw,16px);
+  }
+  .pan-controls{
+    background: rgba(255,255,255,0.04);
+    border:1.5px solid rgba(243,239,227,0.16);
+    border-radius:14px;
+    padding: clamp(10px,1.8vh,16px) 12px clamp(10px,1.8vh,18px);
+    text-align:center;
+  }
+  .pc-label{
+    display:block;
+    font-family:'Kalam', cursive;
+    font-weight:700;
+    font-size: clamp(.85rem,1.9vh,1.1rem);
+    color:var(--chalk-dim);
+    margin-bottom: clamp(8px,1.3vh,12px);
+  }
+  .pc-buttons{
+    display:flex; flex-wrap:wrap; justify-content:center; gap: clamp(5px,1.1vh,9px);
+    margin-bottom: clamp(6px,1.1vh,12px);
+  }
+  .add-btn{
+    font-family:'Kalam', cursive; font-weight:700;
+    font-size: clamp(.78rem,1.7vh,1.02rem);
+    border-radius:9px;
+    padding: clamp(6px,1.3vh,10px) clamp(7px,1.5vw,13px);
+    cursor:pointer;
+    background: transparent;
+    transition: transform .08s, filter .1s;
+  }
+  .add-btn:hover{ filter:brightness(1.15); }
+  .add-btn:active{ transform:translateY(2px); }
+  .add-btn:focus-visible{ outline:2px solid var(--chalk); outline-offset:2px; }
+  .add-btn.x{ border:1.5px solid var(--blue); color:var(--blue); }
+  .add-btn.w1{ border:1.5px solid var(--yellow); color:var(--yellow); }
+  .add-btn.w2{ border:1.5px solid var(--w2); color:var(--w2); }
+  .add-btn.w5{ border:1.5px solid var(--w5); color:var(--w5); }
+  .add-btn.w10{ border:1.5px solid var(--coral); color:var(--coral); }
+
+  @media (max-width:820px), (orientation:portrait){
+    body{ height:auto; min-height:100dvh; align-items:flex-start; }
+    .board-wrap, .frame, .panel{ height:auto; }
+    .main{ flex-direction:column; }
+    .sidebar{ flex:0 0 auto; overflow-y:visible; }
+    .toolbar{ flex-direction:row; flex-wrap:wrap; }
+    .btn{ width:auto; }
+    .stage-col{ flex:0 0 auto; }
+    .scale-stage{ flex:0 0 auto; height: clamp(220px, 58vw, 300px); }
+  }
+  @media (max-width:560px){
+    .pan-controls-row{ grid-template-columns:1fr; }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .beam-assembly{ transition:none; }
+    .chip{ transition:none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="board-wrap">
+  <div class="frame">
+    <div class="panel">
+      <div class="head-row">
+        <a class="back" href="index.html">Zurück zur Übersicht</a>
+        <h1>Waagemodell</h1>
+      </div>
+
+      <div class="main">
+        <div class="sidebar">
+          <p class="sub">Leg x-Blöcke und Gewichte auf die beiden Waagschalen. Nimmst du nur auf einer Seite etwas herunter, verliert die Waage das Gleichgewicht und kippt &mdash; nur wenn auf beiden Seiten gleich viel wegkommt, bleibt sie in der Balance.</p>
+
+          <div class="toolbar">
+            <button class="btn" id="newExampleBtn" type="button">Neues Beispiel</button>
+            <button class="btn ghost" id="clearAllBtn" type="button">Alles leeren</button>
+            <button class="btn ghost" id="revealBtn" type="button">Lösung anzeigen</button>
+          </div>
+          <p class="reveal" id="revealText" hidden></p>
+        </div>
+
+        <div class="stage-col">
+          <div class="scale-stage">
+            <div class="stand-base"></div>
+            <div class="stand-post"></div>
+            <div class="pivot-dot"></div>
+            <div class="equals-mark" aria-hidden="true">=</div>
+            <div class="beam-assembly" id="beamAssembly">
+              <div class="trays-row">
+                <div class="tray" id="trayLeft" aria-label="Linke Waagschale"></div>
+                <div class="tray" id="trayRight" aria-label="Rechte Waagschale"></div>
+              </div>
+              <div class="beam-bar"></div>
+            </div>
+          </div>
+
+          <div class="pan-controls-row">
+            <div class="pan-controls">
+              <span class="pc-label">Linke Waagschale</span>
+              <div class="pc-buttons" data-side="left">
+                <button class="add-btn x" data-side="left" data-type="x" type="button">+ x</button>
+                <button class="add-btn w1" data-side="left" data-type="1" type="button">+ 1</button>
+                <button class="add-btn w2" data-side="left" data-type="2" type="button">+ 2</button>
+                <button class="add-btn w5" data-side="left" data-type="5" type="button">+ 5</button>
+                <button class="add-btn w10" data-side="left" data-type="10" type="button">+ 10</button>
+              </div>
+              <button class="btn ghost small" data-clear="left" type="button">Diese Seite leeren</button>
+            </div>
+            <div class="pan-controls">
+              <span class="pc-label">Rechte Waagschale</span>
+              <div class="pc-buttons" data-side="right">
+                <button class="add-btn x" data-side="right" data-type="x" type="button">+ x</button>
+                <button class="add-btn w1" data-side="right" data-type="1" type="button">+ 1</button>
+                <button class="add-btn w2" data-side="right" data-type="2" type="button">+ 2</button>
+                <button class="add-btn w5" data-side="right" data-type="5" type="button">+ 5</button>
+                <button class="add-btn w10" data-side="right" data-type="10" type="button">+ 10</button>
+              </div>
+              <button class="btn ghost small" data-clear="right" type="button">Diese Seite leeren</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  const $ = function(id){ return document.getElementById(id); };
+  const beamAssembly = $('beamAssembly');
+  const trayLeft = $('trayLeft'), trayRight = $('trayRight');
+  const newExampleBtn = $('newExampleBtn'), clearAllBtn = $('clearAllBtn'), revealBtn = $('revealBtn');
+  const revealText = $('revealText');
+
+  const TYPES = ['x', '1', '2', '5', '10'];
+  const MAX_TILT = 16;
+  const DEG_PER_UNIT = 3;
+
+  const PRESETS = [
+    { xWeight:2, left:{ x:4, 5:1 },        right:{ 10:1, 2:1, 1:1 } },
+    { xWeight:3, left:{ x:2, 2:1, 1:1 },   right:{ 5:1, 2:2 } },
+    { xWeight:5, left:{ x:3, 2:2 },        right:{ 10:1, 5:1, 2:2 } },
+    { xWeight:6, left:{ x:2, 5:1, 1:1 },   right:{ 10:1, 5:1, 2:1, 1:1 } }
+  ];
+  let presetIndex = 0;
+
+  let xWeight = PRESETS[0].xWeight;
+  let pans = { left:{}, right:{} };
+  let revealed = false;
+
+  function emptyPan(){
+    const p = {};
+    TYPES.forEach(function(t){ p[t] = 0; });
+    return p;
+  }
+
+  function loadPreset(preset){
+    xWeight = preset.xWeight;
+    pans.left = Object.assign(emptyPan(), preset.left);
+    pans.right = Object.assign(emptyPan(), preset.right);
+    revealed = false;
+    render();
+  }
+
+  function randomWeight(){
+    return 2 + Math.floor(Math.random() * 5); // 2..6
+  }
+
+  function panWeight(side){
+    const p = pans[side];
+    return p.x * xWeight + p['1'] * 1 + p['2'] * 2 + p['5'] * 5 + p['10'] * 10;
+  }
+
+  function chipHtml(type, side){
+    const cls = type === 'x' ? 'x' : ('w' + type);
+    const label = type === 'x' ? 'x' : type;
+    const removeLabel = type === 'x' ? 'x-Block entfernen' : ('Gewicht ' + type + ' entfernen');
+    return '<button type="button" class="chip ' + cls + '" data-side="' + side + '" data-type="' + type + '" aria-label="' + removeLabel + '">' + label + '</button>';
+  }
+
+  function trayHtml(side){
+    let html = '';
+    TYPES.forEach(function(t){
+      const n = pans[side][t] || 0;
+      for(let i = 0; i < n; i++){ html += chipHtml(t, side); }
+    });
+    return html;
+  }
+
+  function render(){
+    trayLeft.innerHTML = trayHtml('left');
+    trayRight.innerHTML = trayHtml('right');
+
+    const wl = panWeight('left'), wr = panWeight('right');
+    let angle = (wr - wl) * DEG_PER_UNIT;
+    if(angle > MAX_TILT) angle = MAX_TILT;
+    if(angle < -MAX_TILT) angle = -MAX_TILT;
+    beamAssembly.style.setProperty('--tilt', angle + 'deg');
+
+    revealText.hidden = !revealed;
+    if(revealed){
+      revealText.textContent = 'Ein x wiegt gerade ' + xWeight + '.';
+    }
+  }
+
+  function addItem(side, type){
+    pans[side][type] = (pans[side][type] || 0) + 1;
+    render();
+  }
+
+  function removeItem(side, type){
+    if(pans[side][type] > 0){
+      pans[side][type]--;
+      render();
+    }
+  }
+
+  function clearSide(side){
+    pans[side] = emptyPan();
+    render();
+  }
+
+  document.querySelectorAll('.add-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      addItem(btn.getAttribute('data-side'), btn.getAttribute('data-type'));
+    });
+  });
+
+  document.querySelectorAll('[data-clear]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      clearSide(btn.getAttribute('data-clear'));
+    });
+  });
+
+  trayLeft.addEventListener('click', function(e){
+    const chip = e.target.closest('.chip');
+    if(chip) removeItem(chip.getAttribute('data-side'), chip.getAttribute('data-type'));
+  });
+  trayRight.addEventListener('click', function(e){
+    const chip = e.target.closest('.chip');
+    if(chip) removeItem(chip.getAttribute('data-side'), chip.getAttribute('data-type'));
+  });
+
+  newExampleBtn.addEventListener('click', function(){
+    presetIndex = (presetIndex + 1) % PRESETS.length;
+    loadPreset(PRESETS[presetIndex]);
+  });
+
+  clearAllBtn.addEventListener('click', function(){
+    xWeight = randomWeight();
+    pans.left = emptyPan();
+    pans.right = emptyPan();
+    revealed = false;
+    revealText.hidden = true;
+    render();
+  });
+
+  revealBtn.addEventListener('click', function(){
+    revealed = !revealed;
+    revealText.hidden = !revealed;
+    render();
+  });
+
+  loadPreset(PRESETS[0]);
+})();
+</script>
+</body>
+</html>
