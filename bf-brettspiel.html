@@ -47,6 +47,9 @@
     padding: 28px 24px; text-align:center;
   }
   .startCard p.rules{ color:var(--text-dim); font-size:.9rem; line-height:1.7; max-width:52ch; margin: 0 auto 20px; text-align:left; }
+  .typeLegend{ display:grid; grid-template-columns: 1fr 1fr; gap:6px 14px; font-size:.78rem; color:var(--text-dim); margin: 0 0 20px; text-align:left; }
+  .typeLegendItem span{ margin-right:6px; }
+  @media (max-width: 420px){ .typeLegend{ grid-template-columns: 1fr; } }
   .playerChoice{ display:flex; gap:12px; justify-content:center; margin-bottom:22px; flex-wrap:wrap; }
   .playerBtn{
     font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:.95rem;
@@ -191,7 +194,14 @@
       Richtig? Ihr geht 2 Felder vor. Falsch? Ihr bleibt stehen.
       Manche Felder sind <b>Boost</b> (+2) oder <b>Asteroid</b> (&minus;3). Wer zuerst das Ziel erreicht, gewinnt.
     </p>
-    <div class="playerChoice" id="playerChoice">
+    <div class="typeLegend">
+      <div class="typeLegendItem"><span>&#128228;</span> Ausmultiplizieren: Produkt &rarr; Summe</div>
+      <div class="typeLegendItem"><span>&#128229;</span> Faktorisieren: Summe &rarr; Produkt</div>
+      <div class="typeLegendItem"><span>&#129513;</span> L&uuml;cke f&uuml;llen</div>
+      <div class="typeLegendItem"><span>&#128269;</span> Fehler finden</div>
+      <div class="typeLegendItem"><span>&#128683;</span> Passt keine binom. Formel?</div>
+    </div>
+  <div class="playerChoice" id="playerChoice">
       <button class="playerBtn" data-n="1"><span class="figs">🚀</span>1 Spieler</button>
       <button class="playerBtn active" data-n="2"><span class="figs">🚀 🛸</span>2 Spieler</button>
       <button class="playerBtn" data-n="3"><span class="figs">🚀 🛸 👾</span>3 Spieler</button>
@@ -286,6 +296,8 @@
     });
     return result || '0';
   }
+  // a zwischen 1-20, b zwischen 1-20 - aber wenn a > 10, dann b nur 1-9
+  // (damit die Zahlen handhabbar bleiben, wenn zwei Zufallszahlen gemeinsam auftauchen)
   function randAB(){
     const a = randInt(1,20);
     const b = a > 10 ? randInt(1,9) : randInt(1,20);
@@ -293,6 +305,7 @@
   }
   function cloneTerms(terms){ return terms.map(function(t){ return {coef:t.coef, unit:t.unit}; }); }
   function withTermCoef(terms, index, newCoef){ const c = cloneTerms(terms); c[index].coef = newCoef; return c; }
+  function termMagStr(t){ return t.unit === '' ? String(abs(t.coef)) : coeffStr(abs(t.coef), t.unit); }
 
   const SMALL_DELTAS = [-6,-5,-4,-3,-2,-1,1,2,3,4,5,6];
   function randDelta(){ return SMALL_DELTAS[randInt(0, SMALL_DELTAS.length-1)]; }
@@ -337,102 +350,280 @@
     return q;
   }
 
-  // 1. binomische Formel
-  function genC(){
-    const a = randInt(1,20);
-    const terms = [{coef:1,unit:'x\u00B2'},{coef:2*a,unit:'x'},{coef:a*a,unit:''}];
-    const prompt = '(x + ' + a + ')\u00B2';
-    return finalize('Löse die Aufgabe:', prompt, polyStr(terms), buildDistractorPool(terms));
+  /* ---------- gemeinsamer Bauplan fuer BF 1-3 ---------- */
+  // kind: 1 = (A+B)^2, 2 = (A-B)^2, 3 = (A+B)(A-B)
+  // variant: 'simple' (A=x), 'coef' (A=ax), 'twovar' (A=ax, B=by)
+  function productStrFor(kind, aStr, bStr){
+    if(kind === 1) return '(' + aStr + ' + ' + bStr + ')²';
+    if(kind === 2) return '(' + aStr + ' − ' + bStr + ')²';
+    return '(' + aStr + ' + ' + bStr + ')(' + aStr + ' − ' + bStr + ')';
   }
-  // 2. binomische Formel
-  function genD(){
-    const a = randInt(1,20);
-    const terms = [{coef:1,unit:'x\u00B2'},{coef:-2*a,unit:'x'},{coef:a*a,unit:''}];
-    const prompt = '(x \u2212 ' + a + ')\u00B2';
-    return finalize('Löse die Aufgabe:', prompt, polyStr(terms), buildDistractorPool(terms));
+  function buildSpec(kind, variant){
+    let coefA, b;
+    if(variant === 'simple'){
+      coefA = 1;
+      b = randInt(1,20);
+    } else {
+      const ab = randAB();
+      coefA = ab.a; b = ab.b;
+    }
+    const unitYused = variant === 'twovar';
+    const aStr = coeffStr(coefA, 'x');
+    const bStr = unitYused ? coeffStr(b, 'y') : String(b);
+    const midUnit = unitYused ? 'xy' : 'x';
+    const a2 = coefA*coefA, ab2 = 2*coefA*b, b2 = b*b;
+    let terms;
+    if(kind === 1) terms = [{coef:a2,unit:'x²'},{coef:ab2,unit:midUnit},{coef:b2,unit:unitYused?'y²':''}];
+    else if(kind === 2) terms = [{coef:a2,unit:'x²'},{coef:-ab2,unit:midUnit},{coef:b2,unit:unitYused?'y²':''}];
+    else terms = [{coef:a2,unit:'x²'},{coef:0,unit:midUnit},{coef:-b2,unit:unitYused?'y²':''}];
+    const productStr = productStrFor(kind, aStr, bStr);
+    return { kind:kind, variant:variant, a:coefA, b:b, unitYused:unitYused, terms:terms,
+      productStr:productStr, sumStr:polyStr(terms) };
   }
-  // 1. BF mit Koeffizient vor x
-  function genE(){
-    const ab = randAB(), a=ab.a, b=ab.b;
-    const terms = [{coef:a*a,unit:'x\u00B2'},{coef:2*a*b,unit:'x'},{coef:b*b,unit:''}];
-    const prompt = '(' + coeffStr(a,'x') + ' + ' + b + ')\u00B2';
-    const extra = [ withTermCoef(terms,0,a), withTermCoef(terms,2,b) ];
-    return finalize('Löse die Aufgabe:', prompt, polyStr(terms), buildDistractorPool(terms, extra));
-  }
-  // 2. BF mit Koeffizient vor x
-  function genF(){
-    const ab = randAB(), a=ab.a, b=ab.b;
-    const terms = [{coef:a*a,unit:'x\u00B2'},{coef:-2*a*b,unit:'x'},{coef:b*b,unit:''}];
-    const prompt = '(' + coeffStr(a,'x') + ' \u2212 ' + b + ')\u00B2';
-    const extra = [ withTermCoef(terms,0,a), withTermCoef(terms,2,b) ];
-    return finalize('Löse die Aufgabe:', prompt, polyStr(terms), buildDistractorPool(terms, extra));
-  }
-  // 1. BF mit zwei Variablen
-  function genG(){
-    const ab = randAB(), a=ab.a, b=ab.b;
-    const terms = [{coef:a*a,unit:'x\u00B2'},{coef:2*a*b,unit:'xy'},{coef:b*b,unit:'y\u00B2'}];
-    const prompt = '(' + coeffStr(a,'x') + ' + ' + coeffStr(b,'y') + ')\u00B2';
-    const extra = [ withTermCoef(terms,0,a), withTermCoef(terms,2,b) ];
-    return finalize('Löse die Aufgabe:', prompt, polyStr(terms), buildDistractorPool(terms, extra));
-  }
-  // 2. BF mit zwei Variablen
-  function genH(){
-    const ab = randAB(), a=ab.a, b=ab.b;
-    const terms = [{coef:a*a,unit:'x\u00B2'},{coef:-2*a*b,unit:'xy'},{coef:b*b,unit:'y\u00B2'}];
-    const prompt = '(' + coeffStr(a,'x') + ' \u2212 ' + coeffStr(b,'y') + ')\u00B2';
-    const extra = [ withTermCoef(terms,0,a), withTermCoef(terms,2,b) ];
-    return finalize('Löse die Aufgabe:', prompt, polyStr(terms), buildDistractorPool(terms, extra));
-  }
-  // 3. binomische Formel (x+a)(x-a) = x^2 - a^2
-  function genI(){
-    const a = randInt(1,20);
-    const terms = [{coef:1,unit:'x\u00B2'},{coef:0,unit:'x'},{coef:-(a*a),unit:''}];
-    const prompt = '(x + ' + a + ')(x \u2212 ' + a + ')';
-    const extra = [
-      [{coef:1,unit:'x\u00B2'},{coef:2*a,unit:'x'},{coef:a*a,unit:''}],
-      [{coef:1,unit:'x\u00B2'},{coef:-2*a,unit:'x'},{coef:a*a,unit:''}]
-    ];
-    return finalize('Löse die Aufgabe:', prompt, polyStr(terms), buildDistractorPool(terms, extra));
-  }
-  // 3. BF mit Koeffizient vor x
-  function genJ(){
-    const ab = randAB(), a=ab.a, b=ab.b;
-    const terms = [{coef:a*a,unit:'x\u00B2'},{coef:0,unit:'x'},{coef:-(b*b),unit:''}];
-    const prompt = '(' + coeffStr(a,'x') + ' + ' + b + ')(' + coeffStr(a,'x') + ' \u2212 ' + b + ')';
-    const extra = [
-      [{coef:a*a,unit:'x\u00B2'},{coef:2*a*b,unit:'x'},{coef:b*b,unit:''}],
-      [{coef:a*a,unit:'x\u00B2'},{coef:-2*a*b,unit:'x'},{coef:b*b,unit:''}],
-      withTermCoef(terms,0,a),
-      withTermCoef(terms,2,-b)
-    ];
-    return finalize('Löse die Aufgabe:', prompt, polyStr(terms), buildDistractorPool(terms, extra));
-  }
-  // 3. BF mit zwei Variablen
-  function genK(){
-    const ab = randAB(), a=ab.a, b=ab.b;
-    const terms = [{coef:a*a,unit:'x\u00B2'},{coef:0,unit:'xy'},{coef:-(b*b),unit:'y\u00B2'}];
-    const prompt = '(' + coeffStr(a,'x') + ' + ' + coeffStr(b,'y') + ')(' + coeffStr(a,'x') + ' \u2212 ' + coeffStr(b,'y') + ')';
-    const extra = [
-      [{coef:a*a,unit:'x\u00B2'},{coef:2*a*b,unit:'xy'},{coef:b*b,unit:'y\u00B2'}],
-      [{coef:a*a,unit:'x\u00B2'},{coef:-2*a*b,unit:'xy'},{coef:b*b,unit:'y\u00B2'}],
-      withTermCoef(terms,0,a),
-      withTermCoef(terms,2,-b)
-    ];
-    return finalize('Löse die Aufgabe:', prompt, polyStr(terms), buildDistractorPool(terms, extra));
+  function randomVariant(){ return ['simple','coef','twovar'][randInt(0,2)]; }
+  function randomSpec(){ return buildSpec(randInt(1,3), randomVariant()); }
+  function aStrFor(spec){ return coeffStr(spec.a, 'x'); }
+  function bStrFor(spec){ return spec.unitYused ? coeffStr(spec.b, 'y') : String(spec.b); }
+
+  function extrasFor(spec){
+    const extra = [];
+    if(spec.variant !== 'simple'){
+      extra.push(withTermCoef(spec.terms, 0, spec.a));
+      extra.push(withTermCoef(spec.terms, 2, spec.kind === 3 ? -spec.b : spec.b));
+    }
+    if(spec.kind === 3){
+      const mid = 2*spec.a*spec.b;
+      extra.push(withTermCoef(spec.terms, 1, mid));
+      extra.push(withTermCoef(spec.terms, 1, -mid));
+    }
+    return extra;
   }
 
-  const GENERATORS = [genC, genD, genE, genF, genG, genH, genI, genJ, genK];
-  function nextQuestion(){
-    const gen = GENERATORS[randInt(0, GENERATORS.length-1)];
-    return applyNoneOption(gen());
+  /* ---------- Typ 1: Ausmultiplizieren (Produkt -> Summe) ---------- */
+  function genExpand(){
+    const spec = randomSpec();
+    const pool = buildDistractorPool(spec.terms, extrasFor(spec));
+    return finalize('Löse die Aufgabe (Produkt → Summe):', spec.productStr, spec.sumStr, pool);
+  }
+
+  /* ---------- Typ 2: Faktorisieren (Summe -> Produkt) ---------- */
+  function buildFactorDistractors(spec){
+    const correct = spec.productStr;
+    const pool = new Set();
+    function tryAdd(s){ if(s !== correct) pool.add(s); }
+    const aStr = aStrFor(spec), bStr = bStrFor(spec);
+    [1,2,3].forEach(function(k){ if(k !== spec.kind) tryAdd(productStrFor(k, aStr, bStr)); });
+    let guard = 0;
+    while(pool.size < 6 && guard < 40){
+      const k = randInt(1,3);
+      const nb = Math.max(1, spec.b + randDelta());
+      const nbStr = spec.unitYused ? coeffStr(nb,'y') : String(nb);
+      tryAdd(productStrFor(k, aStr, nbStr));
+      guard++;
+    }
+    return Array.from(pool);
+  }
+  function genFactor(){
+    const spec = randomSpec();
+    const pool = buildFactorDistractors(spec);
+    return finalize('Forme um (Summe → Produkt):', spec.sumStr, spec.productStr, pool);
+  }
+
+  /* ---------- Typ 3: Luecke fuellen (beide Richtungen, 1 oder mehrere Luecken) ---------- */
+  function polyStrWithBlank(terms, blankIdxs){
+    let result = ''; let first = true;
+    terms.forEach(function(t, i){
+      if(t.coef === 0) return;
+      const term = blankIdxs.indexOf(i) !== -1 ? '___' : termMagStr(t);
+      if(first){ result += (t.coef < 0 ? '− ' : '') + term; first = false; }
+      else{ result += ' ' + signStr(t.coef) + ' ' + term; }
+    });
+    return result || '0';
+  }
+  function buildGapOptionsForIdx(spec, blankIdx){
+    const t = spec.terms[blankIdx];
+    const correct = termMagStr(t);
+    const pool = new Set();
+    function tryAdd(mag){
+      if(mag <= 0) return;
+      const s = t.unit === '' ? String(mag) : coeffStr(mag, t.unit);
+      if(s !== correct) pool.add(s);
+    }
+    if(blankIdx === 1){ tryAdd(Math.round(abs(t.coef)/2)); tryAdd(spec.b); tryAdd(spec.a); }
+    else if(blankIdx === 2){ tryAdd(spec.b); }
+    else if(blankIdx === 0){ tryAdd(spec.a); }
+    let guard = 0;
+    while(pool.size < 6 && guard < 40){ tryAdd(abs(t.coef) + randDelta()); guard++; }
+    return Array.from(pool);
+  }
+  // baut Distraktor-Kombinationen: aendert pro Option eine oder mehrere Luecken aus ihrem eigenen Pool
+  function buildGapComboPool(perSlotPools, correctParts){
+    const correctStr = correctParts.join(', ');
+    const pool = new Set();
+    function tryAdd(parts){ const s = parts.join(', '); if(s !== correctStr) pool.add(s); }
+    perSlotPools.forEach(function(altList, i){
+      altList.forEach(function(alt){
+        const parts = correctParts.slice(); parts[i] = alt; tryAdd(parts);
+      });
+    });
+    let guard = 0;
+    while(pool.size < 6 && guard < 60){
+      const parts = correctParts.slice();
+      const numToVary = perSlotPools.length === 1 ? 1 : randInt(1, perSlotPools.length);
+      const slotIdxs = shuffle(perSlotPools.map(function(_, i){ return i; })).slice(0, numToVary);
+      slotIdxs.forEach(function(i){
+        const altList = perSlotPools[i];
+        if(altList.length) parts[i] = altList[randInt(0, altList.length-1)];
+      });
+      tryAdd(parts);
+      guard++;
+    }
+    return Array.from(pool);
+  }
+  function genGapExpand(){
+    const spec = randomSpec();
+    const candidateIdxs = [];
+    if(spec.variant !== 'simple') candidateIdxs.push(0);
+    if(spec.terms[1].coef !== 0) candidateIdxs.push(1);
+    candidateIdxs.push(2);
+    const numBlanks = randInt(1, candidateIdxs.length);
+    const blankIdxs = shuffle(candidateIdxs).slice(0, numBlanks).sort(function(a,b){ return a-b; });
+    const expr = spec.productStr + ' = ' + polyStrWithBlank(spec.terms, blankIdxs);
+    const correctParts = blankIdxs.map(function(idx){ return termMagStr(spec.terms[idx]); });
+    const perSlotPools = blankIdxs.map(function(idx){ return buildGapOptionsForIdx(spec, idx); });
+    const pool = buildGapComboPool(perSlotPools, correctParts);
+    const label = blankIdxs.length > 1 ? 'Fülle die Lücken (Produkt → Summe):' : 'Fülle die Lücke (Produkt → Summe):';
+    return finalize(label, expr, correctParts.join(', '), pool);
+  }
+  function productStrWithBlank(spec, sides){
+    const aStr = sides.indexOf('a') !== -1 ? '___' : aStrFor(spec);
+    const bStr = sides.indexOf('b') !== -1 ? '___' : bStrFor(spec);
+    return productStrFor(spec.kind, aStr, bStr);
+  }
+  // side 'a' steht immer fuer den x-Koeffizienten, side 'b' fuer die Konstante
+  // (bzw. den y-Koeffizienten bei zwei Variablen) - der fehlende Wert braucht die passende Variable.
+  function sideStr(spec, side, val){
+    if(side === 'a') return coeffStr(val, 'x');
+    return spec.unitYused ? coeffStr(val, 'y') : String(val);
+  }
+  function buildFactorGapOptionsForSide(spec, side){
+    const correctVal = side === 'a' ? spec.a : spec.b;
+    const correctStr = sideStr(spec, side, correctVal);
+    const pool = new Set();
+    function tryAdd(v){ if(v <= 0) return; const s = sideStr(spec, side, v); if(s !== correctStr) pool.add(s); }
+    tryAdd(side === 'a' ? spec.b : spec.a);
+    tryAdd(correctVal*2);
+    if(correctVal % 2 === 0) tryAdd(correctVal/2);
+    // Trick-Option: die richtige Zahl, aber ohne die Variable dahinter
+    if(correctStr !== String(correctVal)) pool.add(String(correctVal));
+    let guard = 0;
+    while(pool.size < 6 && guard < 40){ tryAdd(Math.max(1, correctVal + randDelta())); guard++; }
+    return Array.from(pool);
+  }
+  function genGapFactor(){
+    const spec = randomSpec();
+    let sides;
+    if(spec.variant === 'simple'){
+      sides = ['b'];
+    } else {
+      const r = Math.random();
+      sides = r < 0.34 ? ['a'] : (r < 0.67 ? ['b'] : ['a','b']);
+    }
+    const expr = spec.sumStr + ' = ' + productStrWithBlank(spec, sides);
+    const correctParts = sides.map(function(side){ return sideStr(spec, side, side === 'a' ? spec.a : spec.b); });
+    const perSlotPools = sides.map(function(side){ return buildFactorGapOptionsForSide(spec, side); });
+    const pool = buildGapComboPool(perSlotPools, correctParts);
+    const label = sides.length > 1 ? 'Fülle die Lücken (Summe → Produkt):' : 'Fülle die Lücke (Summe → Produkt):';
+    return finalize(label, expr, correctParts.join(', '), pool);
+  }
+  function genGap(){ return Math.random() < 0.5 ? genGapExpand() : genGapFactor(); }
+
+  /* ---------- Typ 4: Fehler finden (beide Richtungen) ---------- */
+  function genErrorExpand(){
+    const spec = randomSpec();
+    const isTrue = Math.random() < 0.5;
+    let shown = spec.sumStr;
+    if(!isTrue){
+      const pool = buildDistractorPool(spec.terms, extrasFor(spec));
+      if(pool.length) shown = shuffle(pool)[0];
+    }
+    const expr = spec.productStr + ' = ' + shown;
+    const correct = shown === spec.sumStr ? 'Richtig' : 'Falsch';
+    return { label:'Stimmt diese Umformung?', expr:expr, correct:correct, options:['Richtig','Falsch'] };
+  }
+  function genErrorFactor(){
+    const spec = randomSpec();
+    const isTrue = Math.random() < 0.5;
+    let shown = spec.productStr;
+    if(!isTrue){
+      const pool = buildFactorDistractors(spec);
+      if(pool.length) shown = shuffle(pool)[0];
+    }
+    const expr = spec.sumStr + ' = ' + shown;
+    const correct = shown === spec.productStr ? 'Richtig' : 'Falsch';
+    return { label:'Stimmt diese Umformung?', expr:expr, correct:correct, options:['Richtig','Falsch'] };
+  }
+  function genError(){ return Math.random() < 0.5 ? genErrorExpand() : genErrorFactor(); }
+
+  /* ---------- Typ 5: Passt ueberhaupt eine binomische Formel? ---------- */
+  function genNoFormula(){
+    const useBF = Math.random() < 0.5;
+    let prompt, correct;
+    if(useBF){
+      const spec = randomSpec();
+      prompt = spec.productStr;
+      correct = spec.kind + '. binomische Formel';
+    } else {
+      let pq = randAB(), p = pq.a, q = pq.b, guard = 0;
+      while(q === p && guard < 10){ pq = randAB(); p = pq.a; q = pq.b; guard++; }
+      if(q === p) q = q > 1 ? q - 1 : q + 1;
+      const signP = Math.random() < 0.5 ? '+' : '−';
+      const signQ = Math.random() < 0.5 ? '+' : '−';
+      prompt = '(x ' + signP + ' ' + p + ')(x ' + signQ + ' ' + q + ')';
+      correct = 'Keine binomische Formel anwendbar';
+    }
+    const options = shuffle(['1. binomische Formel','2. binomische Formel','3. binomische Formel','Keine binomische Formel anwendbar']);
+    return { label:'Welche binomische Formel passt hier?', expr:prompt, correct:correct, options:options };
+  }
+
+  // count = wie oft dieser Aufgabentyp pro Spielfeld-Aufbau vorkommt (Summe muss der Zahl der Aufgabenfelder entsprechen)
+  const TASK_TYPES = [
+    { id:'expand',    icon:'📤', label:'Ausmultiplizieren', count:4 },
+    { id:'factor',    icon:'📥', label:'Faktorisieren',     count:5 },
+    { id:'gap',       icon:'🧩', label:'Lücke füllen',      count:6 },
+    { id:'error',     icon:'🔍', label:'Fehler finden',     count:4 },
+    { id:'noFormula', icon:'🚫', label:'Passt keine BF?',   count:3 }
+  ];
+  function buildTaskQueue(){
+    const list = [];
+    TASK_TYPES.forEach(function(t){ for(let i=0;i<t.count;i++) list.push(t.id); });
+    return shuffle(list);
+  }
+  function taskMeta(id){
+    for(let i=0;i<TASK_TYPES.length;i++){ if(TASK_TYPES[i].id === id) return TASK_TYPES[i]; }
+    return TASK_TYPES[0];
+  }
+
+  function nextQuestion(taskId){
+    let q;
+    switch(taskId){
+      case 'factor': q = genFactor(); break;
+      case 'gap': q = genGap(); break;
+      case 'error': q = genError(); break;
+      case 'noFormula': q = genNoFormula(); break;
+      default: q = genExpand(); taskId = 'expand';
+    }
+    if(taskId === 'expand' || taskId === 'factor') q = applyNoneOption(q);
+    return q;
   }
 
   /* =========================================================
      BOARD SETUP
      ========================================================= */
   const TRACK_LEN = 30;
+  // 29 Felder vor dem Ziel: 4 Boost + 3 Asteroid = 7 Sonderfelder, 22 Aufgabenfelder
   const BOOST = new Set([5, 12, 19, 26]);
-  const SETBACK = new Set([8, 15, 22, 29]);
+  const SETBACK = new Set([8, 15, 22]);
   function cellType(n){
     if(n === TRACK_LEN) return 'finish';
     if(BOOST.has(n)) return 'boost';
@@ -440,7 +631,6 @@
     return 'question';
   }
   const CELL_META = {
-    question: { icon:'👽', label:'Mathe-Aufgabe' },
     boost:    { icon:'🌠', label:'Boost +2' },
     setback:  { icon:'☄️', label:'Asteroid \u22123' },
     finish:   { icon:'🪐', label:'Ziel' }
@@ -509,12 +699,26 @@
     btn.classList.add('active');
   });
 
+  let questionTypeByCell = {};
+
   function buildBoard(){
     boardEl.querySelectorAll('.cell').forEach(function(c){ c.remove(); });
+    questionTypeByCell = {};
+    const taskQueue = buildTaskQueue();
+    let taskQueueIdx = 0;
     const order = buildVisualOrder(TRACK_LEN, 6);
     order.forEach(function(n){
       const type = cellType(n);
-      const meta = CELL_META[type];
+      let meta;
+      if(type === 'question'){
+        const taskId = taskQueue[taskQueueIdx] || TASK_TYPES[randInt(0, TASK_TYPES.length-1)].id;
+        taskQueueIdx++;
+        const task = taskMeta(taskId);
+        questionTypeByCell[n] = task.id;
+        meta = { icon: task.icon, label: task.label };
+      } else {
+        meta = CELL_META[type];
+      }
       const cell = document.createElement('div');
       cell.className = 'cell ' + type;
       cell.setAttribute('data-cell', n);
@@ -644,7 +848,8 @@
         animateMove(currentPlayer, 3, false, handleLanding);
       }, 900);
     } else if(type === 'question'){
-      setTimeout(askQuestion, 700);
+      const taskId = questionTypeByCell[finalPos] || 'expand';
+      setTimeout(function(){ askQuestion(taskId); }, 700);
     } else {
       endTurn();
     }
@@ -664,8 +869,8 @@
   /* ---------- question modal ---------- */
   let currentQuestion = null;
 
-  function askQuestion(){
-    currentQuestion = nextQuestion();
+  function askQuestion(taskId){
+    currentQuestion = nextQuestion(taskId);
     qTag.textContent = currentQuestion.label;
     qExpr.textContent = currentQuestion.expr;
     qFeedback.textContent = '';
