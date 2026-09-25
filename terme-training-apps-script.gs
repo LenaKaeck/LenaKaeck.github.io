@@ -101,13 +101,19 @@ function updateSummaryFor(sourceSheetName, targetSheetName) {
 
   for (var i = 0; i < results.length; i++) {
     var row = results[i];
-    var ts = row[0], name = (row[1] || '').toString().trim(), station = row[2], correct = Number(row[3]);
-    if (!name || !(ts instanceof Date)) continue; // Kopfzeile/leere Zeilen überspringen
+    var name = (row[1] || '').toString().trim();
+    var correct = Number(row[3]);
+    // Kopfzeile/leere Zeilen überspringen — anhand der Punktzahl, nicht des
+    // Zeitstempel-Typs (der je nach Zellformatierung mal Date, mal Text ist).
+    if (!name || isNaN(correct)) continue;
+    var station = row[2];
+    var rawTs = row[0];
+    var ts = (rawTs instanceof Date) ? rawTs : new Date(rawTs);
     if (!best[name]) best[name] = {};
     if (best[name][station] === undefined || correct > best[name][station]) {
       best[name][station] = correct;
     }
-    if (!lastSeen[name] || ts > lastSeen[name]) lastSeen[name] = ts;
+    if (!isNaN(ts.getTime()) && (!lastSeen[name] || ts > lastSeen[name])) lastSeen[name] = ts;
   }
 
   var summarySheet = ss.getSheetByName(targetSheetName) || ss.insertSheet(targetSheetName);
@@ -118,7 +124,7 @@ function updateSummaryFor(sourceSheetName, targetSheetName) {
   names.forEach(function (name) {
     var total = 0;
     Object.keys(best[name]).forEach(function (station) { total += best[name][station]; });
-    summarySheet.appendRow([name, total + ' / ' + MAX_TOTAL_POINTS, lastSeen[name]]);
+    summarySheet.appendRow([name, total + ' / ' + MAX_TOTAL_POINTS, lastSeen[name] || '']);
   });
 }
 
