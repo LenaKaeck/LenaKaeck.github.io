@@ -826,23 +826,54 @@
 
   // Fire-and-forget: logs one completed station to the "Ergebnisse" sheet.
   // Uses mode:'no-cors' since we never need to read the response.
+  function sendResultPayload(payload){
+    const body = JSON.stringify(payload);
+    try{
+      if(navigator.sendBeacon){
+        // sendBeacon survives the page actually closing, unlike a normal fetch.
+        navigator.sendBeacon(SCRIPT_URL, new Blob([body], { type: 'text/plain;charset=utf-8' }));
+      } else {
+        fetch(SCRIPT_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          keepalive: true,
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: body
+        }).catch(function(){});
+      }
+    } catch(e){}
+  }
+
   function submitResult(catId, s){
     if(!isScriptConfigured() || !currentStudentName) return;
-    const payload = {
+    sendResultPayload({
       name: currentStudentName,
       station: catTitle(catId),
       correct: s.correct,
       total: TASKS_PER_CATEGORY
-    };
-    try{
-      fetch(SCRIPT_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(payload)
-      }).catch(function(){});
-    } catch(e){}
+    });
   }
+
+  // Falls jemand die Seite mitten in einer Station schließt/verlässt: den
+  // bisherigen Stand trotzdem übermitteln, damit nichts verloren geht.
+  function flushPartialProgress(){
+    if(!isScriptConfigured() || !currentStudentName) return;
+    Object.keys(stats).forEach(function(id){
+      const s = stats[id];
+      if(s.attempted > 0 && s.attempted < TASKS_PER_CATEGORY){
+        sendResultPayload({
+          name: currentStudentName,
+          station: catTitle(id) + ' (nicht fertig)',
+          correct: s.correct,
+          total: s.attempted
+        });
+      }
+    });
+  }
+  document.addEventListener('visibilitychange', function(){
+    if(document.visibilityState === 'hidden') flushPartialProgress();
+  });
+  window.addEventListener('pagehide', flushPartialProgress);
 
   let currentCatId = null;
   let currentTasks = [];
