@@ -800,32 +800,28 @@
 
   function isScriptConfigured(){ return SCRIPT_URL.indexOf('http') === 0; }
 
-  // Loads the name whitelist via a JSONP <script> tag (avoids CORS issues with
-  // reading a cross-origin fetch() response from a Google Apps Script Web App).
+  // Loads the name whitelist from the Google Apps Script Web App.
   function loadWhitelist(onDone){
     if(!isScriptConfigured()){ onDone(null); return; }
     let done = false;
-    const cbName = '__wlCb' + Date.now();
+    const controller = new AbortController();
     const timer = setTimeout(function(){
       if(done) return; done = true;
-      delete window[cbName];
+      controller.abort();
       onDone(null);
     }, WHITELIST_TIMEOUT_MS);
-    window[cbName] = function(names){
-      if(done) return; done = true;
-      clearTimeout(timer);
-      delete window[cbName];
-      onDone(names);
-    };
-    const s = document.createElement('script');
-    s.src = SCRIPT_URL + '?action=whitelist&callback=' + cbName;
-    s.onerror = function(){
-      if(done) return; done = true;
-      clearTimeout(timer);
-      delete window[cbName];
-      onDone(null);
-    };
-    document.body.appendChild(s);
+    fetch(SCRIPT_URL + '?action=whitelist', { signal: controller.signal })
+      .then(function(r){ return r.json(); })
+      .then(function(names){
+        if(done) return; done = true;
+        clearTimeout(timer);
+        onDone(names);
+      })
+      .catch(function(){
+        if(done) return; done = true;
+        clearTimeout(timer);
+        onDone(null);
+      });
   }
 
   // Fire-and-forget: logs one completed station to the "Ergebnisse" sheet.

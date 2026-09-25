@@ -26,10 +26,9 @@ function doGet(e) {
   var action = e.parameter.action;
   if (action === 'whitelist') {
     var names = getWhitelistNames();
-    var callback = e.parameter.callback || 'callback';
     return ContentService
-      .createTextOutput(callback + '(' + JSON.stringify(names) + ')')
-      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+      .createTextOutput(JSON.stringify(names))
+      .setMimeType(ContentService.MimeType.JSON);
   }
   return ContentService.createTextOutput('OK');
 }
