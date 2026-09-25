@@ -11,12 +11,13 @@
  *   - "Whitelist": column A=Codename (one header row, then one erlaubter Codename pro Zeile)
  *   - "Ergebnisse": columns A=Zeitstempel, B=Codename, C=Station, D=Richtig, E=Von
  *     (header row optional — appendRow just adds below whatever is already there)
- *   - "Gesamtergebnisse": wird automatisch angelegt/überschrieben — eine Zeile pro
- *     Codename mit Gesamtpunktzahl (bester Versuch je Station aufsummiert, von MAX_TOTAL_POINTS)
+ *   - "Gesamtergebnisse": wird automatisch überschrieben — eine Zeile pro Codename
+ *     mit Gesamtpunktzahl (bester Versuch je Station aufsummiert, von MAX_TOTAL_POINTS)
  *     und dem Zeitpunkt der letzten Aktivität.
- *   - "Gast-Ergebnisse": wird automatisch angelegt — alle Einsendungen mit dem
- *     Codenamen "Gast" landen hier statt in "Ergebnisse" und fließen NICHT in
- *     "Gesamtergebnisse" ein (da "Gast" keine eindeutige Person identifiziert).
+ *   - "Ergebnisse Gäste": wie "Ergebnisse", aber nur Einsendungen mit dem
+ *     Codenamen "Gast" (der keine eindeutige Person identifiziert, daher getrennt).
+ *   - "Gesamtergebnisse Gäste": wie "Gesamtergebnisse", aber aus "Ergebnisse Gäste"
+ *     berechnet (ergibt praktisch eine gemeinsame "Gast"-Zeile über alle Gäste).
  */
 
 // 11 Stationen × 6 Aufgaben im Tool — bei Änderungen dort auch hier anpassen.
@@ -44,11 +45,12 @@ function doPost(e) {
   var name = (data.name || '').toString().trim();
   var ss = SpreadsheetApp.getActiveSpreadsheet();
 
-  // "Gast" identifiziert keine bestimmte Person — geht in einen eigenen Tab
-  // und wird nie in die Whitelist-Prüfung oder die Gesamtergebnisse einbezogen.
+  // "Gast" identifiziert keine bestimmte Person — geht in die "Gäste"-Tabs
+  // und wird nie gegen die Whitelist geprüft.
   if (name.toLowerCase() === 'gast') {
-    var gastSheet = ss.getSheetByName('Gast-Ergebnisse') || ss.insertSheet('Gast-Ergebnisse');
+    var gastSheet = ss.getSheetByName('Ergebnisse Gäste') || ss.insertSheet('Ergebnisse Gäste');
     gastSheet.appendRow([new Date(), 'Gast', data.station || '', data.correct, data.total]);
+    updateSummaryFor('Ergebnisse Gäste', 'Gesamtergebnisse Gäste');
     return ContentService.createTextOutput('OK (Gast)');
   }
 
@@ -66,7 +68,7 @@ function doPost(e) {
     data.correct,
     data.total
   ]);
-  updateSummary();
+  updateSummaryFor('Ergebnisse', 'Gesamtergebnisse');
   return ContentService.createTextOutput('OK');
 }
 
@@ -83,14 +85,17 @@ function getWhitelistNames() {
   return names;
 }
 
-// Baut den Tab "Gesamtergebnisse" komplett neu auf: pro Codename der beste
-// Versuch je Station aufsummiert (Wiederholungen zählen nur mit ihrem besten
-// Ergebnis), plus der Zeitpunkt der letzten Aktivität. Kann auch manuell im
-// Apps-Script-Editor ausgeführt werden (Funktion "updateSummary" auswählen → ▶ Run),
-// um die Übersicht ohne neue Einsendung sofort zu aktualisieren.
-function updateSummary() {
+// Baut den Ziel-Tab komplett neu auf: pro Codename der beste Versuch je Station
+// aufsummiert (Wiederholungen zählen nur mit ihrem besten Ergebnis), plus der
+// Zeitpunkt der letzten Aktivität. Wird für "Ergebnisse"→"Gesamtergebnisse" und
+// "Ergebnisse Gäste"→"Gesamtergebnisse Gäste" genutzt. Kann auch manuell im
+// Apps-Script-Editor ausgeführt werden (Funktion auswählen → ▶ Run), um die
+// Übersicht ohne neue Einsendung sofort zu aktualisieren.
+function updateSummaryFor(sourceSheetName, targetSheetName) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var results = ss.getSheetByName('Ergebnisse').getDataRange().getValues();
+  var sourceSheet = ss.getSheetByName(sourceSheetName);
+  if (!sourceSheet) return;
+  var results = sourceSheet.getDataRange().getValues();
   var best = {};     // Codename -> { Station -> bestes "Richtig" }
   var lastSeen = {}; // Codename -> letzter Zeitstempel
 
@@ -105,7 +110,7 @@ function updateSummary() {
     if (!lastSeen[name] || ts > lastSeen[name]) lastSeen[name] = ts;
   }
 
-  var summarySheet = ss.getSheetByName('Gesamtergebnisse') || ss.insertSheet('Gesamtergebnisse');
+  var summarySheet = ss.getSheetByName(targetSheetName) || ss.insertSheet(targetSheetName);
   summarySheet.clearContents();
   summarySheet.appendRow(['Codename', 'Punkte', 'Zeitstempel']);
 
@@ -115,4 +120,11 @@ function updateSummary() {
     Object.keys(best[name]).forEach(function (station) { total += best[name][station]; });
     summarySheet.appendRow([name, total + ' / ' + MAX_TOTAL_POINTS, lastSeen[name]]);
   });
+}
+
+// Manuell im Editor ausführbar, falls du die Übersichten ohne neue
+// Einsendung sofort aktualisieren willst.
+function updateSummary() {
+  updateSummaryFor('Ergebnisse', 'Gesamtergebnisse');
+  updateSummaryFor('Ergebnisse Gäste', 'Gesamtergebnisse Gäste');
 }
