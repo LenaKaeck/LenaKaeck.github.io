@@ -1,0 +1,119 @@
+/**
+ * Google Apps Script backend for terme-training.html.
+ *
+ * Setup: see the step-by-step instructions the teacher received in chat.
+ * This file lives in the repo only as a reference/backup — the code that
+ * actually runs lives inside the Google Apps Script project attached to
+ * the Google Sheet, and must be pasted there manually (Apps Script does
+ * not read this file from GitHub).
+ *
+ * Expects a Google Sheet with these tabs:
+ *   - "Whitelist": column A=Codename (one header row, then one erlaubter Codename pro Zeile)
+ *   - "Ergebnisse": columns A=Zeitstempel, B=Codename, C=Station, D=Richtig, E=Von
+ *     (header row optional — appendRow just adds below whatever is already there)
+ *   - "Gesamtergebnisse": wird automatisch angelegt/überschrieben — eine Zeile pro
+ *     Codename mit Gesamtpunktzahl (bester Versuch je Station aufsummiert, von MAX_TOTAL_POINTS)
+ *     und dem Zeitpunkt der letzten Aktivität.
+ *   - "Gast-Ergebnisse": wird automatisch angelegt — alle Einsendungen mit dem
+ *     Codenamen "Gast" landen hier statt in "Ergebnisse" und fließen NICHT in
+ *     "Gesamtergebnisse" ein (da "Gast" keine eindeutige Person identifiziert).
+ */
+
+// 11 Stationen × 6 Aufgaben im Tool — bei Änderungen dort auch hier anpassen.
+var MAX_TOTAL_POINTS = 66;
+
+function doGet(e) {
+  var action = e.parameter.action;
+  if (action === 'whitelist') {
+    var names = getWhitelistNames();
+    var callback = e.parameter.callback || 'callback';
+    return ContentService
+      .createTextOutput(callback + '(' + JSON.stringify(names) + ')')
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return ContentService.createTextOutput('OK');
+}
+
+function doPost(e) {
+  var data;
+  try {
+    data = JSON.parse(e.postData.contents);
+  } catch (err) {
+    return ContentService.createTextOutput('invalid payload');
+  }
+
+  var name = (data.name || '').toString().trim();
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  // "Gast" identifiziert keine bestimmte Person — geht in einen eigenen Tab
+  // und wird nie in die Whitelist-Prüfung oder die Gesamtergebnisse einbezogen.
+  if (name.toLowerCase() === 'gast') {
+    var gastSheet = ss.getSheetByName('Gast-Ergebnisse') || ss.insertSheet('Gast-Ergebnisse');
+    gastSheet.appendRow([new Date(), 'Gast', data.station || '', data.correct, data.total]);
+    return ContentService.createTextOutput('OK (Gast)');
+  }
+
+  var whitelist = getWhitelistNames();
+  if (whitelist.indexOf(name) === -1) {
+    // Not on the whitelist — silently ignored, nothing is written.
+    return ContentService.createTextOutput('rejected: not on whitelist');
+  }
+
+  var sheet = ss.getSheetByName('Ergebnisse');
+  sheet.appendRow([
+    new Date(),
+    name,
+    data.station || '',
+    data.correct,
+    data.total
+  ]);
+  updateSummary();
+  return ContentService.createTextOutput('OK');
+}
+
+function getWhitelistNames() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Whitelist');
+  var values = sheet.getDataRange().getValues();
+  var names = [];
+  // Row 0 is assumed to be the header row (z.B. "Codename") and wird übersprungen.
+  for (var i = 1; i < values.length; i++) {
+    var codename = (values[i][0] || '').toString().trim();
+    if (codename) names.push(codename);
+  }
+  names.sort(function (a, b) { return a.localeCompare(b, 'de'); });
+  return names;
+}
+
+// Baut den Tab "Gesamtergebnisse" komplett neu auf: pro Codename der beste
+// Versuch je Station aufsummiert (Wiederholungen zählen nur mit ihrem besten
+// Ergebnis), plus der Zeitpunkt der letzten Aktivität. Kann auch manuell im
+// Apps-Script-Editor ausgeführt werden (Funktion "updateSummary" auswählen → ▶ Run),
+// um die Übersicht ohne neue Einsendung sofort zu aktualisieren.
+function updateSummary() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var results = ss.getSheetByName('Ergebnisse').getDataRange().getValues();
+  var best = {};     // Codename -> { Station -> bestes "Richtig" }
+  var lastSeen = {}; // Codename -> letzter Zeitstempel
+
+  for (var i = 0; i < results.length; i++) {
+    var row = results[i];
+    var ts = row[0], name = (row[1] || '').toString().trim(), station = row[2], correct = Number(row[3]);
+    if (!name || !(ts instanceof Date)) continue; // Kopfzeile/leere Zeilen überspringen
+    if (!best[name]) best[name] = {};
+    if (best[name][station] === undefined || correct > best[name][station]) {
+      best[name][station] = correct;
+    }
+    if (!lastSeen[name] || ts > lastSeen[name]) lastSeen[name] = ts;
+  }
+
+  var summarySheet = ss.getSheetByName('Gesamtergebnisse') || ss.insertSheet('Gesamtergebnisse');
+  summarySheet.clearContents();
+  summarySheet.appendRow(['Codename', 'Punkte', 'Zeitstempel']);
+
+  var names = Object.keys(best).sort(function (a, b) { return a.localeCompare(b, 'de'); });
+  names.forEach(function (name) {
+    var total = 0;
+    Object.keys(best[name]).forEach(function (station) { total += best[name][station]; });
+    summarySheet.appendRow([name, total + ' / ' + MAX_TOTAL_POINTS, lastSeen[name]]);
+  });
+}

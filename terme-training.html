@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Terme-Training</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-1:#173B24; --bg-2:#0A1F13;
+    --panel: rgba(255,255,255,0.06);
+    --panel-strong: rgba(255,255,255,0.11);
+    --border: rgba(196,230,180,0.22);
+    --text:#F1F8E9; --text-dim:#AFCBA6;
+    --leaf:#7BD389; --gold:#F0B93B;
+    --bark:#8B5E34; --bark-dark:#5C3D22;
+    --green:#8FE398; --red:#E8654B;
+    --radius:16px;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0; min-height:100vh;
+    font-family:'Nunito', sans-serif; color:var(--text);
+    background:
+      radial-gradient(circle, rgba(240,217,110,0.35) 1.5px, transparent 2px),
+      radial-gradient(circle, rgba(123,211,137,0.28) 1.5px, transparent 2px),
+      linear-gradient(180deg, var(--bg-1), var(--bg-2));
+    background-size: 130px 130px, 85px 85px, 100% 100%;
+    background-position: 0 0, 40px 60px, 0 0;
+    padding: 28px 16px 40px;
+  }
+  h1,h2,h3{ font-family:'Baloo 2', sans-serif; margin:0; }
+  .wrap{ max-width: 820px; margin:0 auto; }
+  .hidden{ display:none !important; }
+
+  header{ text-align:center; margin-bottom: 18px; }
+  header h1{ font-size: clamp(1.8rem, 5.5vw, 2.5rem); letter-spacing:.3px;
+    background: linear-gradient(90deg, var(--leaf), var(--gold));
+    -webkit-background-clip:text; background-clip:text; color:transparent; }
+  header p{ color:var(--text-dim); font-size:.9rem; margin:6px 0 0; }
+
+  a.backLink{ color:var(--text-dim); text-decoration:none; font-size:.85rem; font-weight:700; }
+  a.backLink:hover{ color:var(--leaf); }
+
+  .btn{
+    font-family:'Baloo 2', sans-serif; font-weight:700; font-size:1rem;
+    background: linear-gradient(90deg, var(--leaf), var(--gold)); color:#0A1F13;
+    border:none; border-radius:12px; padding:13px 26px; cursor:pointer;
+    box-shadow: 0 4px 0 var(--bark-dark);
+  }
+  .btn:active{ transform: translateY(3px); box-shadow:0 1px 0 var(--bark-dark); }
+  .btn:disabled{ opacity:.45; cursor:default; }
+  .btn.ghost{
+    background:transparent; border:1.5px solid var(--border); color:var(--text);
+    box-shadow:none; font-family:'Nunito',sans-serif; font-weight:700; font-size:.9rem; padding:10px 18px;
+  }
+  .btn.good{ background: linear-gradient(90deg, #8FE398, #7BD389); }
+  .btn.bad{ background: linear-gradient(90deg, #E8654B, #F0B93B); }
+  .btnRow{ display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-top:16px; }
+
+  /* ---------- overview ---------- */
+  .scoreBar{
+    background:var(--panel); border:1.5px solid var(--border); border-radius:14px;
+    padding:14px 18px; display:flex; align-items:center; justify-content:space-between;
+    gap:12px; margin-bottom:26px; flex-wrap:wrap;
+  }
+  .scoreBar .big{ font-family:'Baloo 2',sans-serif; font-size:1.4rem; color:var(--gold); }
+  .scoreBar .lbl{ color:var(--text-dim); font-size:.8rem; }
+  .track{ width:100%; height:9px; border-radius:6px; background:rgba(0,0,0,0.25); margin-top:8px; overflow:hidden; }
+  .track > div{ height:100%; background: linear-gradient(90deg, var(--leaf), var(--gold)); border-radius:6px; transition: width .3s; }
+
+  .groupSection + .groupSection{ margin-top: 28px; }
+  .groupTitle{
+    font-size:1.15rem; color:var(--gold); margin: 0 0 12px; padding-bottom:6px;
+    border-bottom: 2px dashed var(--border);
+  }
+
+  .catGrid{ display:grid; grid-template-columns: repeat(auto-fill, minmax(220px,1fr)); gap:14px; }
+  .catCard{
+    background: repeating-linear-gradient(45deg, var(--bark), var(--bark) 6px, var(--bark-dark) 6px, var(--bark-dark) 12px);
+    border:none; border-radius:var(--radius);
+    padding:6px; text-align:left; cursor:pointer; color:var(--text); font-family:inherit;
+    box-shadow: 0 6px 14px rgba(0,0,0,0.3);
+  }
+  .catCard:hover{ filter: brightness(1.08); }
+  .catCardInner{
+    background: radial-gradient(ellipse at 30% 0%, rgba(255,255,255,0.06), transparent 60%), var(--bg-1);
+    border-radius: 11px; padding:16px 14px;
+    display:flex; flex-direction:column; gap:8px; height:100%;
+  }
+  .catCard .icon{ font-size:1.5rem; }
+  .catCard h3{ font-size:1.02rem; }
+  .catCard p{ color:var(--text-dim); font-size:.8rem; margin:0; line-height:1.4; flex:1; }
+  .catCard .status{
+    font-size:.78rem; font-weight:700; border-radius:8px; padding:4px 9px; align-self:flex-start;
+    background: var(--panel-strong); color:var(--text-dim);
+  }
+  .catCard .status.done-good{ color:#0A1F13; background: var(--green); }
+  .catCard .status.done-mid{ color:#0A1F13; background: var(--gold); }
+  .catCard .status.done-low{ color:#0A1F13; background: var(--red); }
+
+  .resetRow{ text-align:center; margin-top:26px; }
+  .resetRow button{
+    background:none; border:none; color:var(--text-dim); font-size:.78rem; text-decoration:underline;
+    cursor:pointer; font-family:inherit;
+  }
+
+  /* ---------- task screen ---------- */
+  .taskTop{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; flex-wrap:wrap; gap:8px;}
+  .taskTop .catName{ font-family:'Baloo 2',sans-serif; font-size:1.05rem; color:var(--gold); }
+  .taskTop .progress{ color:var(--text-dim); font-size:.85rem; }
+
+  .card{
+    background: linear-gradient(180deg, #1D4A2C, #0F2517);
+    border:2px solid var(--bark); border-radius:18px; padding:26px 22px;
+  }
+  .mechTag{ font-size:.76rem; color:var(--leaf); font-weight:700; letter-spacing:.3px; margin-bottom:10px; }
+  .prompt{
+    font-family:'Baloo 2', sans-serif; font-size: clamp(1.15rem, 4.5vw, 1.5rem);
+    text-align:center; margin: 6px 0 22px; word-break:break-word; line-height:1.5;
+  }
+  .hint{ text-align:center; color:var(--text-dim); font-size:.82rem; margin-bottom:16px; }
+
+  /* ---------- name screen ---------- */
+  .nameFieldWrap{ max-width:360px; margin:0 auto; }
+  .nameInput{
+    width:100%; padding:12px 14px; border-radius:10px; border:1.5px solid var(--border);
+    background: var(--panel-strong); color:var(--text); font-family:'Nunito',sans-serif; font-size:1rem;
+  }
+  .nameInput:focus{ outline:none; border-color:var(--leaf); }
+
+  .solutionBox{
+    background: var(--panel-strong); border:1.5px solid var(--border); border-radius:12px;
+    padding:16px 16px; margin-top:6px;
+  }
+  .solutionBox .label{ font-size:.74rem; color:var(--gold); font-weight:700; margin-bottom:6px; }
+  .solutionBox .answer{ font-family:'Baloo 2',sans-serif; font-size:1.15rem; text-align:center; }
+
+  .stepsBox{
+    margin-top:14px; padding-top:14px; border-top:2px dashed var(--border);
+  }
+  .stepsBox .label{ font-size:.74rem; color:var(--red); font-weight:700; margin-bottom:8px; }
+  .stepsBox ol{ margin:0; padding-left:1.2em; }
+  .stepsBox li{ margin-bottom:6px; font-size:.92rem; line-height:1.5; }
+
+  .feedback{ text-align:center; font-weight:700; margin-top:14px; min-height:1.4em; }
+  .feedback.ok{ color:var(--green); }
+  .feedback.bad{ color:var(--red); }
+
+  /* ---------- cat done screen ---------- */
+  .doneCard{ text-align:center; }
+  .doneCard .fig{ font-size:2.6rem; }
+  .doneCard h2{ font-size:1.4rem; margin:10px 0 6px; }
+  .doneCard p{ color:var(--text-dim); margin:0 0 18px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>&#127796; Terme-Dschungel &#127811;</h1>
+    <p>Klammern, binomische Formeln &amp; Ausklammern &mdash; Station f&uuml;r Station f&uuml;r die Klassenarbeit &uuml;ben.</p>
+  </header>
+
+  <!-- NAME SCREEN -->
+  <div id="nameScreen" class="card">
+    <h2 style="text-align:center; margin-bottom:10px;">Wie ist dein Codename? &#128058;</h2>
+    <p class="hint" id="nameHint">Einen Moment &hellip;</p>
+    <div class="nameFieldWrap">
+      <input type="text" id="nameInputField" class="nameInput" placeholder="Dein Codename" autocomplete="off" disabled>
+    </div>
+    <p class="hint" id="nameError" style="color:var(--red); min-height:1.2em; margin-top:8px;"></p>
+    <div style="text-align:center; margin-top:10px;">
+      <button class="btn" id="nameStartBtn" disabled>Los geht&rsquo;s &#127807;</button>
+    </div>
+  </div>
+
+  <!-- OVERVIEW SCREEN -->
+  <div id="overviewScreen" class="hidden">
+    <div class="scoreBar">
+      <div>
+        <div class="lbl">Gesamtpunktzahl (diese Sitzung)</div>
+        <div class="big" id="scoreText">0 / 0</div>
+        <div class="track"><div id="scoreFill" style="width:0%"></div></div>
+      </div>
+    </div>
+    <div id="catGrid"></div>
+    <div class="resetRow"><button id="resetBtn" type="button">Andere Person? Namen wechseln</button></div>
+  </div>
+
+  <!-- TASK SCREEN -->
+  <div id="taskScreen" class="hidden">
+    <div class="taskTop">
+      <a class="backLink" href="#" id="backLink">&larr; Zur &Uuml;bersicht</a>
+      <span class="catName" id="taskCatName"></span>
+      <span class="progress" id="taskProgress"></span>
+    </div>
+    <div class="card">
+      <div class="mechTag" id="mechTag"></div>
+      <div class="prompt" id="promptText"></div>
+      <div class="hint" id="hintText">L&ouml;se die Aufgabe auf deinem Blatt.</div>
+
+      <div style="text-align:center;">
+        <button class="btn" id="showSolutionBtn">L&ouml;sung anzeigen</button>
+      </div>
+
+      <div id="solutionArea" class="hidden">
+        <div class="solutionBox">
+          <div class="label">L&ouml;sung</div>
+          <div class="answer" id="answerText"></div>
+        </div>
+        <div class="btnRow" id="judgeRow">
+          <button class="btn good" id="correctBtn">&#10003; Richtig gel&ouml;st</button>
+          <button class="btn bad" id="wrongBtn">&#10007; Falsch gel&ouml;st</button>
+        </div>
+        <div class="feedback" id="feedbackText"></div>
+        <div id="stepsArea" class="stepsBox hidden">
+          <div class="label">Vollst&auml;ndiger L&ouml;sungsweg</div>
+          <ol id="stepsList"></ol>
+        </div>
+        <div class="btnRow"><button class="btn ghost hidden" id="nextTaskBtn">Weiter</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CATEGORY DONE SCREEN -->
+  <div id="doneScreen" class="hidden card doneCard">
+    <div class="fig">&#127942;</div>
+    <h2 id="doneTitle">Station geschafft!</h2>
+    <p id="doneSub"></p>
+    <button class="btn" id="doneBackBtn">Zur &Uuml;bersicht</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* =========================================================
+     GENERIC MATH / TEXT HELPERS
+     ========================================================= */
+  function randInt(min, max){ return Math.floor(Math.random()*(max-min+1))+min; }
+  function randNZ(min, max){ // nonzero, random sign
+    const m = randInt(min, max);
+    return Math.random() < 0.5 ? m : -m;
+  }
+  function abs(n){ return Math.abs(n); }
+  function signStr(n){ return n>=0 ? '+' : '−'; }
+  function shuffle(arr){
+    const a = arr.slice();
+    for(let i=a.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+    return a;
+  }
+  function gcd(a,b){ a=Math.abs(a); b=Math.abs(b); while(b){ const t=b; b=a%b; a=t; } return a || 1; }
+  function gcdList(arr){ return arr.reduce(function(g,n){ return gcd(g,n); }, 0) || 1; }
+
+  function coeffStr(n, unit){
+    const a = abs(n);
+    return (a===1 && unit!=='' ? '' : String(a)) + unit;
+  }
+  function termMagStr(t){ return coeffStr(t.coef, t.unit); }
+  function signedTermStr(t){ return (t.coef<0?'− ':'+ ') + termMagStr(t); }
+  // A single signed coefficient*unit shown standalone (e.g. as a factor or a lone result) — no leading '+'.
+  function fullTermStr(coef, unit){ return (coef<0?'−':'') + coeffStr(coef, unit); }
+
+  // Formats a list of {coef,unit} terms into a string, skipping zero terms, in the given order.
+  function polyStr(terms){
+    let result = ''; let first = true;
+    terms.forEach(function(t){
+      if(t.coef === 0) return;
+      const term = coeffStr(t.coef, t.unit);
+      if(first){ result += (t.coef < 0 ? '− ' : '') + term; first = false; }
+      else{ result += ' ' + signStr(t.coef) + ' ' + term; }
+    });
+    return result || '0';
+  }
+  // Same as polyStr but replaces the term(s) at blankIdxs with "___" — the sign shown
+  // is always the term's real sign, so the blank itself only ever needs the magnitude.
+  function polyStrWithBlank(terms, blankIdxs){
+    let result = ''; let first = true;
+    terms.forEach(function(t, i){
+      const isBlank = blankIdxs.indexOf(i) !== -1;
+      if(t.coef === 0 && !isBlank) return;
+      const term = isBlank ? '___' : coeffStr(t.coef, t.unit);
+      if(first){ result += (t.coef < 0 ? '− ' : '') + term; first = false; }
+      else{ result += ' ' + signStr(t.coef) + ' ' + term; }
+    });
+    return result || '0';
+  }
+  function cloneTerms(terms){ return terms.map(function(t){ return {coef:t.coef, unit:t.unit}; }); }
+
+  const SMALL_DELTAS = [-6,-5,-4,-3,-2,-1,1,2,3,4,5,6];
+  function randDelta(){ return SMALL_DELTAS[randInt(0, SMALL_DELTAS.length-1)]; }
+
+  // Generic "Fehler finden" builder for any poly (array of {coef,unit} in display order).
+  function makeErrorFromPoly(poly){
+    const isTrue = Math.random() < 0.5;
+    const correctStr = polyStr(poly);
+    if(isTrue){
+      return { shownStr: correctStr, isTrue:true, note:'Die Umformung stimmt – alle Terme sind richtig berechnet.' };
+    }
+    const nz = poly.map(function(t,i){ return i; }).filter(function(i){ return poly[i].coef !== 0; });
+    const idx = nz[randInt(0, nz.length-1)];
+    const original = poly[idx];
+    let wrong = original.coef + randDelta();
+    if(wrong === original.coef) wrong += 1;
+    const shownPoly = poly.map(function(t,i){ return i===idx ? {coef:wrong, unit:t.unit} : t; });
+    const unitLabel = original.unit === '' ? 'der konstante Term (die Zahl ohne Variable)' : 'der Term mit ' + original.unit;
+    const note = 'Der Fehler steckt bei ' + unitLabel + ': Richtig muss dort ' + signedTermStr(original) +
+      ' stehen, nicht ' + signedTermStr({coef:wrong, unit:original.unit}) + '.';
+    return { shownStr: polyStr(shownPoly), isTrue:false, note: note, correctStr: correctStr };
+  }
+
+  // Generic "Fülle die Lücke" builder for any poly.
+  function makeGapFromPoly(poly){
+    const nz = poly.map(function(t,i){ return i; }).filter(function(i){ return poly[i].coef !== 0; });
+    const idx = nz[randInt(0, nz.length-1)];
+    return { blankIdx: idx, promptPoly: polyStrWithBlank(poly, [idx]), answer: termMagStr(poly[idx]) };
+  }
+
+  /* =========================================================
+     BF-ENGINE (1., 2. & 3. binomische Formel) — Basis wie im Brettspiel
+     ========================================================= */
+  function randAB(){
+    const a = randInt(1,20);
+    const b = a > 10 ? randInt(1,9) : randInt(1,20);
+    return { a:a, b:b };
+  }
+  function productStrFor(kind, aStr, bStr){
+    if(kind === 1) return '(' + aStr + ' + ' + bStr + ')²';
+    if(kind === 2) return '(' + aStr + ' − ' + bStr + ')²';
+    return '(' + aStr + ' + ' + bStr + ')(' + aStr + ' − ' + bStr + ')';
+  }
+  function bfFormulaLine(kind){
+    if(kind===1) return '1. binomische Formel: (a + b)² = a² + 2ab + b²';
+    if(kind===2) return '2. binomische Formel: (a − b)² = a² − 2ab + b²';
+    return '3. binomische Formel: (a + b)(a − b) = a² − b²';
+  }
+  function buildSpec(kind, variant){
+    let coefA, b;
+    if(variant === 'simple'){ coefA = 1; b = randInt(1,20); }
+    else { const ab = randAB(); coefA = ab.a; b = ab.b; }
+    const unitYused = variant === 'twovar';
+    const aStr = coeffStr(coefA, 'x');
+    const bStr = unitYused ? coeffStr(b, 'y') : String(b);
+    const midUnit = unitYused ? 'xy' : 'x';
+    const a2 = coefA*coefA, ab2 = 2*coefA*b, b2 = b*b;
+    let terms;
+    if(kind === 1) terms = [{coef:a2,unit:'x²'},{coef:ab2,unit:midUnit},{coef:b2,unit:unitYused?'y²':''}];
+    else if(kind === 2) terms = [{coef:a2,unit:'x²'},{coef:-ab2,unit:midUnit},{coef:b2,unit:unitYused?'y²':''}];
+    else terms = [{coef:a2,unit:'x²'},{coef:0,unit:midUnit},{coef:-b2,unit:unitYused?'y²':''}];
+    const productStr = productStrFor(kind, aStr, bStr);
+    return { kind:kind, variant:variant, a:coefA, b:b, unitYused:unitYused, terms:terms,
+      productStr:productStr, sumStr:polyStr(terms), aStr:aStr, bStr:bStr };
+  }
+  function randomVariant(){ return ['simple','coef','twovar'][randInt(0,2)]; }
+  function randomSpec(forcedKind){
+    const kind = forcedKind || randInt(1,3);
+    return buildSpec(kind, randomVariant());
+  }
+  function needsParensForSquare(str){ return /[a-zA-Z]/.test(str) && str.length > 1; }
+  function sq(str){ return (needsParensForSquare(str) ? '(' + str + ')' : str) + '²'; }
+  function bfSubstitution(spec){
+    const aSq = sq(spec.aStr), bSq = sq(spec.bStr);
+    if(spec.kind===1) return aSq+' + 2·'+spec.aStr+'·'+spec.bStr+' + '+bSq;
+    if(spec.kind===2) return aSq+' − 2·'+spec.aStr+'·'+spec.bStr+' + '+bSq;
+    return aSq+' − '+bSq;
+  }
+  function bfSteps(spec){
+    return [
+      'a = ' + spec.aStr + ',  b = ' + spec.bStr,
+      bfFormulaLine(spec.kind),
+      bfSubstitution(spec) + ' = ' + spec.sumStr
+    ];
+  }
+
+  function genBfExpand(kind){
+    const spec = randomSpec(kind);
+    return { tag:'Ausmultiplizieren (Produkt → Summe)', prompt: spec.productStr, answer: spec.sumStr, steps: bfSteps(spec) };
+  }
+  function genBfFactor(kind){
+    const spec = randomSpec(kind);
+    const steps = ['Erkenne das Muster: ' + bfFormulaLine(spec.kind)].concat(bfSteps(spec).slice(0,1)).concat([spec.sumStr + ' = ' + spec.productStr]);
+    return { tag:'Faktorisieren (Summe → Produkt)', prompt: spec.sumStr, answer: spec.productStr, steps: steps };
+  }
+  function genBfGap(kind){
+    const spec = randomSpec(kind);
+    const gap = makeGapFromPoly(spec.terms);
+    const prompt = spec.productStr + ' = ' + gap.promptPoly;
+    return { tag:'Lücke füllen', prompt: prompt, answer: gap.answer, steps: bfSteps(spec) };
+  }
+  function genBfError(kind){
+    const spec = randomSpec(kind);
+    const err = makeErrorFromPoly(spec.terms);
+    const prompt = 'Stimmt diese Umformung?\n' + spec.productStr + ' = ' + err.shownStr;
+    const answer = err.isTrue ? 'Richtig, die Umformung stimmt.' : ('Falsch. Richtig ist: ' + spec.productStr + ' = ' + spec.sumStr);
+    const steps = err.isTrue ? bfSteps(spec) : [err.note].concat(bfSteps(spec));
+    return { tag:'Fehler finden', prompt: prompt, answer: answer, steps: steps };
+  }
+  function genBfNoFormula(){
+    const useBF = Math.random() < 0.5;
+    if(useBF){
+      const spec = randomSpec();
+      return { tag:'Welche binomische Formel passt?', prompt: spec.productStr,
+        answer: spec.kind + '. binomische Formel  →  ' + spec.productStr + ' = ' + spec.sumStr,
+        steps: bfSteps(spec) };
+    }
+    let pq = randAB(), p = pq.a, q = pq.b, guard = 0;
+    while(q === p && guard < 10){ pq = randAB(); p = pq.a; q = pq.b; guard++; }
+    if(q === p) q = q > 1 ? q - 1 : q + 1;
+    const signP = Math.random() < 0.5 ? '+' : '−';
+    const signQ = Math.random() < 0.5 ? '+' : '−';
+    const prompt = '(x ' + signP + ' ' + p + ')(x ' + signQ + ' ' + q + ')';
+    const pNum = signP === '+' ? p : -p, qNum = signQ === '+' ? q : -q;
+    const terms = [{coef:1,unit:'x²'},{coef:pNum+qNum,unit:'x'},{coef:pNum*qNum,unit:''}];
+    return { tag:'Welche binomische Formel passt?', prompt: prompt,
+      answer: 'Keine binomische Formel anwendbar (die Zahlen ' + p + ' und ' + q + ' stimmen nicht überein).',
+      steps: [
+        'Bei einer binomischen Formel müssten in beiden Klammern die gleichen Zahlen stehen.',
+        'Hier stehen ' + p + ' und ' + q + ' – keine binomische Formel anwendbar, also normal ausmultiplizieren (FOIL).',
+        prompt + ' = ' + polyStr(terms)
+      ] };
+  }
+
+  /* =========================================================
+     KATEGORIE 5: Zahl/Variable mal Klammer & Minusklammer
+     ========================================================= */
+  function genKlammerZahlSpec(){
+    const variant = ['num','minus','varlin'][randInt(0,2)];
+    if(variant === 'minus'){
+      const a = randInt(1,4), b = randNZ(1,12);
+      const inner = [{coef:a,unit:'x'},{coef:b,unit:''}];
+      const prompt = '−(' + polyStr(inner) + ')';
+      const poly = [{coef:-a,unit:'x'},{coef:-b,unit:''}];
+      const steps = [
+        'Minusklammer: Beim Auflösen kehren sich alle Vorzeichen in der Klammer um.',
+        prompt + ' = ' + polyStr(poly)
+      ];
+      return { prompt: prompt, poly: poly, steps: steps };
+    }
+    if(variant === 'varlin'){
+      const m = randNZ(2,6), c = randInt(1,6), d = randNZ(1,12);
+      const inner = [{coef:c,unit:'x'},{coef:d,unit:''}];
+      const mStr = fullTermStr(m,'x');
+      const prompt = mStr + '(' + polyStr(inner) + ')';
+      const poly = [{coef:m*c,unit:'x²'},{coef:m*d,unit:'x'}];
+      const steps = [
+        'Jeder Summand in der Klammer wird mit ' + mStr + ' multipliziert.',
+        mStr + '·' + coeffStr(c,'x') + ' = ' + fullTermStr(m*c,'x²') + ',  ' +
+          mStr + '·' + Math.abs(d) + ' = ' + signedTermStr({coef:m*d,unit:'x'}),
+        prompt + ' = ' + polyStr(poly)
+      ];
+      return { prompt: prompt, poly: poly, steps: steps };
+    }
+    const k = randNZ(2,7), a = randInt(1,3), b = randNZ(1,12);
+    const inner = [{coef:a,unit:'x'},{coef:b,unit:''}];
+    const prompt = String(k) + '(' + polyStr(inner) + ')';
+    const poly = [{coef:k*a,unit:'x'},{coef:k*b,unit:''}];
+    const steps = [
+      'Jeder Summand in der Klammer wird mit ' + k + ' multipliziert.',
+      k + '·' + coeffStr(a,'x') + ' = ' + fullTermStr(k*a,'x') + ',  ' + k + '·' + Math.abs(b) + ' = ' + signedTermStr({coef:k*b,unit:''}),
+      prompt + ' = ' + polyStr(poly)
+    ];
+    return { prompt: prompt, poly: poly, steps: steps };
+  }
+  function genKlammerZahlExpand(){
+    const s = genKlammerZahlSpec();
+    return { tag:'Klammer auflösen', prompt: s.prompt, answer: polyStr(s.poly), steps: s.steps };
+  }
+  function genKlammerZahlGap(){
+    const s = genKlammerZahlSpec();
+    const gap = makeGapFromPoly(s.poly);
+    return { tag:'Lücke füllen', prompt: s.prompt + ' = ' + gap.promptPoly, answer: gap.answer, steps: s.steps };
+  }
+  function genKlammerZahlError(){
+    const s = genKlammerZahlSpec();
+    const err = makeErrorFromPoly(s.poly);
+    const prompt = 'Stimmt diese Umformung?\n' + s.prompt + ' = ' + err.shownStr;
+    const answer = err.isTrue ? 'Richtig, die Umformung stimmt.' : ('Falsch. Richtig ist: ' + s.prompt + ' = ' + polyStr(s.poly));
+    const steps = err.isTrue ? s.steps : [err.note].concat(s.steps);
+    return { tag:'Fehler finden', prompt: prompt, answer: answer, steps: steps };
+  }
+
+  /* =========================================================
+     KATEGORIE 6: Klammer mal Klammer
+     ========================================================= */
+  function genKlammerKlammerSpec(){
+    const twoVar = Math.random() < 0.5;
+    const a = randInt(1,4), c = randInt(1,4);
+    const b = randNZ(1,9), d = randNZ(1,9);
+    const bUnit = twoVar ? 'y' : '';
+    const midUnit = twoVar ? 'xy' : 'x';
+    const left = [{coef:a,unit:'x'},{coef:b,unit:bUnit}];
+    const right = [{coef:c,unit:'x'},{coef:d,unit:bUnit}];
+    const prompt = '(' + polyStr(left) + ')(' + polyStr(right) + ')';
+    const poly = [
+      {coef:a*c, unit:'x²'},
+      {coef:a*d + b*c, unit:midUnit},
+      {coef:b*d, unit: twoVar ? 'y²' : ''}
+    ];
+    const p1 = coeffStr(a,'x') + '·' + coeffStr(c,'x');
+    const p2 = coeffStr(a,'x') + '·' + coeffStr(d,bUnit);
+    const p3 = coeffStr(b,bUnit) + '·' + coeffStr(c,'x');
+    const p4 = coeffStr(b,bUnit) + '·' + coeffStr(d,bUnit);
+    const expandedRaw = [{coef:a*c,unit:'x²'},{coef:a*d,unit:midUnit},{coef:b*c,unit:midUnit},{coef:b*d,unit: twoVar?'y²':''}];
+    const steps = [
+      'Jedes Glied der ersten Klammer mit jedem Glied der zweiten Klammer multiplizieren:',
+      p1 + ' + ' + p2 + ' + ' + p3 + ' + ' + p4 + ' = ' + polyStr(expandedRaw),
+      'Gleichartige Terme zusammenfassen: ' + prompt + ' = ' + polyStr(poly)
+    ];
+    return { prompt: prompt, poly: poly, steps: steps };
+  }
+  function genKlammerKlammerExpand(){
+    const s = genKlammerKlammerSpec();
+    return { tag:'Ausmultiplizieren', prompt: s.prompt, answer: polyStr(s.poly), steps: s.steps };
+  }
+  function genKlammerKlammerGap(){
+    const s = genKlammerKlammerSpec();
+    const gap = makeGapFromPoly(s.poly);
+    return { tag:'Lücke füllen', prompt: s.prompt + ' = ' + gap.promptPoly, answer: gap.answer, steps: s.steps };
+  }
+  function genKlammerKlammerError(){
+    const s = genKlammerKlammerSpec();
+    const err = makeErrorFromPoly(s.poly);
+    const prompt = 'Stimmt diese Umformung?\n' + s.prompt + ' = ' + err.shownStr;
+    const answer = err.isTrue ? 'Richtig, die Umformung stimmt.' : ('Falsch. Richtig ist: ' + s.prompt + ' = ' + polyStr(s.poly));
+    const steps = err.isTrue ? s.steps : [err.note].concat(s.steps);
+    return { tag:'Fehler finden', prompt: prompt, answer: answer, steps: steps };
+  }
+
+  /* =========================================================
+     KATEGORIE 7: Gemischt - Klammern auflösen (mehrere Regeln kombiniert)
+     ========================================================= */
+  function makeBlock(){
+    const kind = randInt(0,3);
+    if(kind === 0){ // Zahl mal Klammer
+      const k = randNZ(2,6), a = randInt(1,3), b = randNZ(1,9);
+      const str = String(k) + '(' + polyStr([{coef:a,unit:'x'},{coef:b,unit:''}]) + ')';
+      const poly = [{coef:k*a,unit:'x'},{coef:k*b,unit:''}];
+      return { str:str, poly:poly, label:'Klammer mit Zahl multiplizieren' };
+    }
+    if(kind === 1){ // Binom-Quadrat
+      const a = randInt(1,3), b = randInt(1,9), minus = Math.random()<0.5;
+      const str = '(' + coeffStr(a,'x') + (minus?' − ':' + ') + b + ')²';
+      const mid = 2*a*b*(minus?-1:1);
+      const poly = [{coef:a*a,unit:'x²'},{coef:mid,unit:'x'},{coef:b*b,unit:''}];
+      return { str:str, poly:poly, label:(minus?'2.':'1.') + ' binomische Formel' };
+    }
+    if(kind === 2){ // Differenz von Quadraten
+      const a = randInt(1,3), b = randInt(1,9);
+      const str = '(' + coeffStr(a,'x') + ' + ' + b + ')(' + coeffStr(a,'x') + ' − ' + b + ')';
+      const poly = [{coef:a*a,unit:'x²'},{coef:0,unit:'x'},{coef:-(b*b),unit:''}];
+      return { str:str, poly:poly, label:'3. binomische Formel' };
+    }
+    // Klammer mal Klammer (allgemein)
+    const a = randInt(1,3), c = randInt(1,3), b = randNZ(1,9), d = randNZ(1,9);
+    const str = '(' + polyStr([{coef:a,unit:'x'},{coef:b,unit:''}]) + ')(' + polyStr([{coef:c,unit:'x'},{coef:d,unit:''}]) + ')';
+    const poly = [{coef:a*c,unit:'x²'},{coef:a*d+b*c,unit:'x'},{coef:b*d,unit:''}];
+    return { str:str, poly:poly, label:'Klammer mal Klammer' };
+  }
+  function makeMonomialBlock(){
+    const asSquare = Math.random() < 0.5;
+    const m = randInt(1,9);
+    const poly = asSquare ? [{coef:m,unit:'x²'}] : [{coef:m,unit:'x'}];
+    return { str: coeffStr(m, asSquare?'x²':'x'), poly: poly, label:null };
+  }
+  function addPolyGeneric(p1, p2){
+    const units = ['x²','x','',];
+    const map = {};
+    units.forEach(function(u){ map[u]=0; });
+    p1.concat(p2).forEach(function(t){ if(map[t.unit]===undefined) map[t.unit]=0; map[t.unit]+=t.coef; });
+    return units.filter(function(u){return true;}).map(function(u){ return {coef:map[u], unit:u}; });
+  }
+  function scalePolyGeneric(p, k){ return p.map(function(t){ return {coef:t.coef*k, unit:t.unit}; }); }
+
+  function genKlammernMixSpec(){
+    const block1 = makeBlock();
+    const block2 = Math.random() < 0.35 ? makeMonomialBlock() : makeBlock();
+    const op = Math.random() < 0.5 ? '+' : '−';
+    // Avoid a confusing "− -3(...)" or "+ -3(...)": parenthesize a block that starts with its own minus sign.
+    const block2Str = block2.str.charAt(0) === '-' ? '(' + block2.str + ')' : block2.str;
+    const prompt = block1.str + ' ' + op + ' ' + block2Str;
+    const finalPoly = op === '+' ? addPolyGeneric(block1.poly, block2.poly) : addPolyGeneric(block1.poly, scalePolyGeneric(block2.poly, -1));
+    const steps = [];
+    steps.push((block1.label ? block1.label + ': ' : '') + block1.str + ' = ' + polyStr(block1.poly));
+    if(block2.label) steps.push(block2.label + ': ' + block2.str + ' = ' + polyStr(block2.poly));
+    steps.push('Zusammensetzen und gleichartige Terme zusammenfassen: ' + prompt + ' = ' + polyStr(finalPoly));
+    return { prompt: prompt, poly: finalPoly, steps: steps };
+  }
+  function genKlammernMixExpand(){
+    const s = genKlammernMixSpec();
+    return { tag:'Klammern auflösen und vereinfachen', prompt: s.prompt, answer: polyStr(s.poly), steps: s.steps };
+  }
+  function genKlammernMixGap(){
+    const s = genKlammernMixSpec();
+    const gap = makeGapFromPoly(s.poly);
+    return { tag:'Lücke füllen', prompt: s.prompt + ' = ' + gap.promptPoly, answer: gap.answer, steps: s.steps };
+  }
+  function genKlammernMixError(){
+    const s = genKlammernMixSpec();
+    const err = makeErrorFromPoly(s.poly);
+    const prompt = 'Stimmt diese Umformung?\n' + s.prompt + ' = ' + err.shownStr;
+    const answer = err.isTrue ? 'Richtig, die Umformung stimmt.' : ('Falsch. Richtig ist: ' + s.prompt + ' = ' + polyStr(s.poly));
+    const steps = err.isTrue ? s.steps : [err.note].concat(s.steps);
+    return { tag:'Fehler finden', prompt: prompt, answer: answer, steps: steps };
+  }
+
+  /* =========================================================
+     KATEGORIE 8: Ausklammern
+     ========================================================= */
+  const AUSKLAMMERN_SHAPES = [
+    { units:['x²','x'], common:'x', rest:['x',''] },
+    { units:['x',''], common:'', rest:['x',''] },
+    { units:['xy','x'], common:'x', rest:['y',''] },
+    { units:['x²y','xy'], common:'xy', rest:['x',''] },
+    { units:['xy²','x²y','xy'], common:'xy', rest:['y','x',''] },
+    { units:['x²','x',''], common:'', rest:['x²','x',''] }
+  ];
+  function genAusklammernSpec(){
+    let shape, coefs, g, guard = 0;
+    do{
+      shape = AUSKLAMMERN_SHAPES[randInt(0, AUSKLAMMERN_SHAPES.length-1)];
+      coefs = shape.units.map(function(){ return randInt(2,9)*randInt(1,4); });
+      g = gcdList(coefs);
+      guard++;
+    } while((g <= 1 && shape.common === '') && guard < 20);
+    const forceNegative = Math.random() < 0.3;
+    const signs = shape.units.map(function(i,idx){ return idx===0 ? 1 : (Math.random()<0.5?1:-1); });
+    if(forceNegative){ g = -g; }
+    const originalTerms = shape.units.map(function(u,i){ return {coef: signs[i]*coefs[i], unit:u}; });
+    const prompt = polyStr(originalTerms);
+    const restCoefs = coefs.map(function(c,i){ return signs[i]*c/g; });
+    const restTerms = shape.rest.map(function(u,i){ return {coef: restCoefs[i], unit:u}; });
+    const factorStr = fullTermStr(g, shape.common);
+    const answer = factorStr + '(' + polyStr(restTerms) + ')';
+    const steps = [
+      'Gemeinsamer Zahlenfaktor (GGT) von ' + coefs.map(function(c){return c;}).join(', ') + ': ' + Math.abs(g) +
+        (shape.common ? ', gemeinsame Variable: ' + shape.common : '') + (forceNegative ? ' (mit negativem Vorzeichen ausgeklammert)' : ''),
+      'Klammere ' + factorStr + ' aus jedem Summanden aus.',
+      prompt + ' = ' + answer
+    ];
+    return { prompt: prompt, factorStr: factorStr, restTerms: restTerms, answer: answer, steps: steps, g:g, coefs: coefs, common: shape.common };
+  }
+  function genAusklammernFactor(){
+    const s = genAusklammernSpec();
+    return { tag:'Ausklammern (Summe → Produkt)', prompt: s.prompt, answer: s.answer, steps: s.steps };
+  }
+  function genAusklammernGap(){
+    const s = genAusklammernSpec();
+    const blankFactor = Math.random() < 0.5;
+    let prompt, answer;
+    if(blankFactor){
+      prompt = s.prompt + ' = ___(' + polyStr(s.restTerms) + ')';
+      answer = s.factorStr;
+    } else {
+      const idx = randInt(0, s.restTerms.length-1);
+      const gapPoly = polyStrWithBlank(s.restTerms, [idx]);
+      prompt = s.prompt + ' = ' + s.factorStr + '(' + gapPoly + ')';
+      answer = termMagStr(s.restTerms[idx]);
+    }
+    return { tag:'Lücke füllen', prompt: prompt, answer: answer, steps: s.steps };
+  }
+  function genAusklammernError(){
+    const s = genAusklammernSpec();
+    const isTrue = Math.random() < 0.5;
+    let shownAnswer = s.answer, note = 'Die Faktorisierung stimmt.';
+    if(!isTrue){
+      const corruptFactor = Math.random() < 0.5;
+      if(corruptFactor){
+        let wrongG = Math.abs(s.g) + (randDelta()>0?randDelta():Math.abs(randDelta()));
+        if(wrongG === Math.abs(s.g) || wrongG<=0) wrongG = Math.abs(s.g)+2;
+        const wrongFactorStr = fullTermStr(s.g<0?-wrongG:wrongG, s.common);
+        shownAnswer = wrongFactorStr + '(' + polyStr(s.restTerms) + ')';
+        note = 'Der ausgeklammerte Faktor ist falsch. Richtig ist: ' + s.answer;
+      } else {
+        const idx = randInt(0, s.restTerms.length-1);
+        const orig = s.restTerms[idx];
+        let wrong = orig.coef + randDelta();
+        if(wrong === orig.coef) wrong += 1;
+        const wrongRest = s.restTerms.map(function(t,i){ return i===idx? {coef:wrong,unit:t.unit} : t; });
+        shownAnswer = s.factorStr + '(' + polyStr(wrongRest) + ')';
+        note = 'In der Klammer steht ein falscher Term. Richtig ist: ' + s.answer;
+      }
+    }
+    const prompt = 'Stimmt diese Faktorisierung?\n' + s.prompt + ' = ' + shownAnswer;
+    const answer = isTrue ? 'Richtig, die Faktorisierung stimmt.' : ('Falsch. ' + note);
+    const steps = isTrue ? s.steps : [note].concat(s.steps);
+    return { tag:'Fehler finden', prompt: prompt, answer: answer, steps: steps };
+  }
+
+  /* =========================================================
+     KATEGORIEN-REGISTRY
+     ========================================================= */
+  const TASKS_PER_CATEGORY = 6;
+
+  const CATEGORIES = [
+    { id:'bf1', group:'bf', title:'1. Binomische Formel', sub:'(a+b)² = a²+2ab+b²', icon:'➕' },
+    { id:'bf2', group:'bf', title:'2. Binomische Formel', sub:'(a−b)² = a²−2ab+b²', icon:'➖' },
+    { id:'bf3', group:'bf', title:'3. Binomische Formel', sub:'(a+b)(a−b) = a²−b²', icon:'⚔️' },
+    { id:'bfFactor', group:'bf', title:'Binomische Formeln: Faktorisieren', sub:'Summe → Produkt, alle drei Formeln gemischt', icon:'\u{1F4E5}' },
+    { id:'bfGap', group:'bf', title:'Binomische Formeln: Lücke füllen', sub:'Fehlende Zahl oder fehlenden Term ergänzen', icon:'\u{1F9E9}' },
+    { id:'bfMix', group:'bf', title:'Gemischt: Alle Formeln', sub:'Erkennen, anwenden &amp; welche BF passt?', icon:'\u{1F6AB}' },
+    { id:'klammerZahl', group:'klammern', title:'Zahl/Variable mal Klammer', sub:'Klammern auflösen, Minusklammer', icon:'✖️' },
+    { id:'klammerKlammer', group:'klammern', title:'Klammer mal Klammer', sub:'Zwei Klammern ausmultiplizieren', icon:'\u{1F517}' },
+    { id:'klammernMix', group:'klammern', title:'Gemischt: Klammern auflösen', sub:'Mehrere Regeln kombiniert', icon:'\u{1F9EE}' },
+    { id:'klammerGapAll', group:'klammern', title:'Klammern auflösen: Lücke füllen', sub:'Lücken bei allen Klammer-Aufgabentypen', icon:'\u{1F9E9}' },
+    { id:'ausklammern', group:'klammern', title:'Ausklammern', sub:'Gemeinsamen Faktor herausziehen', icon:'\u{1F4E5}' }
+  ];
+
+  const GENERATORS = {
+    bf1: { mechanics:['expand','expand','gap','gap','error','error'], gen:function(m){
+      if(m==='gap') return genBfGap(1);
+      if(m==='error') return genBfError(1);
+      return genBfExpand(1);
+    }},
+    bf2: { mechanics:['expand','expand','gap','gap','error','error'], gen:function(m){
+      if(m==='gap') return genBfGap(2);
+      if(m==='error') return genBfError(2);
+      return genBfExpand(2);
+    }},
+    bf3: { mechanics:['expand','expand','gap','gap','error','error'], gen:function(m){
+      if(m==='gap') return genBfGap(3);
+      if(m==='error') return genBfError(3);
+      return genBfExpand(3);
+    }},
+    bfFactor: { mechanics:['factor','factor','factor','factor','factor','error'], gen:function(m){
+      if(m==='error') return genBfError();
+      return genBfFactor();
+    }},
+    bfGap: { mechanics:['gap','gap','gap','gap','gap','error'], gen:function(m){
+      if(m==='error') return genBfError();
+      return genBfGap();
+    }},
+    bfMix: { mechanics:['expand','factor','gap','error','noFormula','noFormula'], gen:function(m){
+      if(m==='expand') return genBfExpand();
+      if(m==='factor') return genBfFactor();
+      if(m==='gap') return genBfGap();
+      if(m==='error') return genBfError();
+      return genBfNoFormula();
+    }},
+    klammerZahl: { mechanics:['expand','expand','expand','expand','gap','error'], gen:function(m){
+      if(m==='gap') return genKlammerZahlGap();
+      if(m==='error') return genKlammerZahlError();
+      return genKlammerZahlExpand();
+    }},
+    klammerKlammer: { mechanics:['expand','expand','expand','expand','gap','error'], gen:function(m){
+      if(m==='gap') return genKlammerKlammerGap();
+      if(m==='error') return genKlammerKlammerError();
+      return genKlammerKlammerExpand();
+    }},
+    klammernMix: { mechanics:['expand','expand','expand','expand','gap','error'], gen:function(m){
+      if(m==='gap') return genKlammernMixGap();
+      if(m==='error') return genKlammernMixError();
+      return genKlammernMixExpand();
+    }},
+    klammerGapAll: { mechanics:['gap','gap','gap','gap','gap','error'], gen:function(m){
+      const pick = randInt(0,2);
+      if(m==='error'){
+        if(pick===0) return genKlammerZahlError();
+        if(pick===1) return genKlammerKlammerError();
+        return genKlammernMixError();
+      }
+      if(pick===0) return genKlammerZahlGap();
+      if(pick===1) return genKlammerKlammerGap();
+      return genKlammernMixGap();
+    }},
+    ausklammern: { mechanics:['factor','factor','factor','factor','gap','error'], gen:function(m){
+      if(m==='gap') return genAusklammernGap();
+      if(m==='error') return genAusklammernError();
+      return genAusklammernFactor();
+    }}
+  };
+
+  function buildTasks(catId){
+    const def = GENERATORS[catId];
+    let pool = def.mechanics.slice();
+    while(pool.length < TASKS_PER_CATEGORY) pool = pool.concat(def.mechanics);
+    pool = shuffle(pool).slice(0, TASKS_PER_CATEGORY);
+    return pool.map(function(m){ return def.gen(m); });
+  }
+
+  /* =========================================================
+     STATE (in-memory only — nothing persists between logins)
+     ========================================================= */
+  let stats = {};
+  function statFor(id){
+    if(!stats[id]) stats[id] = { done:false, correct:0, attempted:0 };
+    return stats[id];
+  }
+
+  /* =========================================================
+     SCHÜLER-LOGIN & GOOGLE-SHEET-ANBINDUNG
+     ========================================================= */
+  // ⚠️ Nach dem Einrichten der Google Apps Script Web-App (siehe Anleitung) hier die URL eintragen:
+  const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxwZC6JF8H-i3vL2O940F1M6SPow2ulOiI7r5oGlhPpf-zFp7u_o6j0hL-2lw4fs0q9/exec';
+  const WHITELIST_TIMEOUT_MS = 6000;
+
+  let currentStudentName = null;
+
+  function isScriptConfigured(){ return SCRIPT_URL.indexOf('http') === 0; }
+
+  // Loads the name whitelist via a JSONP <script> tag (avoids CORS issues with
+  // reading a cross-origin fetch() response from a Google Apps Script Web App).
+  function loadWhitelist(onDone){
+    if(!isScriptConfigured()){ onDone(null); return; }
+    let done = false;
+    const cbName = '__wlCb' + Date.now();
+    const timer = setTimeout(function(){
+      if(done) return; done = true;
+      delete window[cbName];
+      onDone(null);
+    }, WHITELIST_TIMEOUT_MS);
+    window[cbName] = function(names){
+      if(done) return; done = true;
+      clearTimeout(timer);
+      delete window[cbName];
+      onDone(names);
+    };
+    const s = document.createElement('script');
+    s.src = SCRIPT_URL + '?action=whitelist&callback=' + cbName;
+    s.onerror = function(){
+      if(done) return; done = true;
+      clearTimeout(timer);
+      delete window[cbName];
+      onDone(null);
+    };
+    document.body.appendChild(s);
+  }
+
+  // Fire-and-forget: logs one completed station to the "Ergebnisse" sheet.
+  // Uses mode:'no-cors' since we never need to read the response.
+  function submitResult(catId, s){
+    if(!isScriptConfigured() || !currentStudentName) return;
+    const payload = {
+      name: currentStudentName,
+      station: catTitle(catId),
+      correct: s.correct,
+      total: TASKS_PER_CATEGORY
+    };
+    try{
+      fetch(SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload)
+      }).catch(function(){});
+    } catch(e){}
+  }
+
+  let currentCatId = null;
+  let currentTasks = [];
+  let taskIndex = 0;
+  let lastCorrect = null;
+
+  /* =========================================================
+     DOM
+     ========================================================= */
+  const overviewScreen = document.getElementById('overviewScreen');
+  const taskScreen = document.getElementById('taskScreen');
+  const doneScreen = document.getElementById('doneScreen');
+  const catGrid = document.getElementById('catGrid');
+  const scoreText = document.getElementById('scoreText');
+  const scoreFill = document.getElementById('scoreFill');
+  const resetBtn = document.getElementById('resetBtn');
+  const backLink = document.getElementById('backLink');
+  const taskCatName = document.getElementById('taskCatName');
+  const taskProgress = document.getElementById('taskProgress');
+  const mechTag = document.getElementById('mechTag');
+  const promptText = document.getElementById('promptText');
+  const hintText = document.getElementById('hintText');
+  const showSolutionBtn = document.getElementById('showSolutionBtn');
+  const solutionArea = document.getElementById('solutionArea');
+  const answerText = document.getElementById('answerText');
+  const judgeRow = document.getElementById('judgeRow');
+  const correctBtn = document.getElementById('correctBtn');
+  const wrongBtn = document.getElementById('wrongBtn');
+  const feedbackText = document.getElementById('feedbackText');
+  const stepsArea = document.getElementById('stepsArea');
+  const stepsList = document.getElementById('stepsList');
+  const nextTaskBtn = document.getElementById('nextTaskBtn');
+  const doneTitle = document.getElementById('doneTitle');
+  const doneSub = document.getElementById('doneSub');
+  const doneBackBtn = document.getElementById('doneBackBtn');
+  const nameScreen = document.getElementById('nameScreen');
+  const nameHint = document.getElementById('nameHint');
+  const nameInputField = document.getElementById('nameInputField');
+  const nameError = document.getElementById('nameError');
+  const nameStartBtn = document.getElementById('nameStartBtn');
+
+  const GROUPS = [
+    { key:'bf', label:'\u{1F334} Binomische Formeln' },
+    { key:'klammern', label:'\u{1F33F} Klammern' }
+  ];
+
+  function renderOverview(){
+    let totalCorrect = 0;
+    const maxPossible = CATEGORIES.length * TASKS_PER_CATEGORY;
+    catGrid.innerHTML = '';
+    GROUPS.forEach(function(g){
+      const catsInGroup = CATEGORIES.filter(function(c){ return c.group === g.key; });
+      if(!catsInGroup.length) return;
+      const section = document.createElement('div');
+      section.className = 'groupSection';
+      const h2 = document.createElement('h2');
+      h2.className = 'groupTitle';
+      h2.textContent = g.label;
+      section.appendChild(h2);
+      const grid = document.createElement('div');
+      grid.className = 'catGrid';
+      catsInGroup.forEach(function(cat){
+        const s = statFor(cat.id);
+        totalCorrect += s.correct;
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'catCard';
+        let statusHtml;
+        if(s.attempted === 0){
+          statusHtml = '<span class="status">Noch nicht bearbeitet</span>';
+        } else {
+          const ratio = s.correct / s.attempted;
+          const cls = ratio >= 0.75 ? 'done-good' : (ratio >= 0.4 ? 'done-mid' : 'done-low');
+          const label = s.done ? (s.correct + ' / ' + TASKS_PER_CATEGORY + ' richtig') : ('angefangen: ' + s.correct + ' / ' + s.attempted + ' richtig');
+          statusHtml = '<span class="status ' + cls + '">' + label + '</span>';
+        }
+        card.innerHTML =
+          '<div class="catCardInner">' +
+            '<span class="icon">' + cat.icon + '</span>' +
+            '<h3>' + cat.title + '</h3>' +
+            '<p>' + cat.sub + '</p>' +
+            statusHtml +
+          '</div>';
+        card.addEventListener('click', function(){ startCategory(cat.id); });
+        grid.appendChild(card);
+      });
+      section.appendChild(grid);
+      catGrid.appendChild(section);
+    });
+    scoreText.textContent = totalCorrect + ' / ' + maxPossible;
+    scoreFill.style.width = Math.round(100 * totalCorrect / maxPossible) + '%';
+  }
+
+  function catTitle(id){
+    const c = CATEGORIES.filter(function(c){ return c.id===id; })[0];
+    return c ? c.title : id;
+  }
+
+  function startCategory(id){
+    currentCatId = id;
+    currentTasks = buildTasks(id);
+    taskIndex = 0;
+    stats[id] = { done:false, correct:0, attempted:0 };
+    overviewScreen.classList.add('hidden');
+    doneScreen.classList.add('hidden');
+    taskScreen.classList.remove('hidden');
+    renderTask();
+  }
+
+  function renderTask(){
+    const task = currentTasks[taskIndex];
+    taskCatName.textContent = catTitle(currentCatId);
+    taskProgress.textContent = 'Aufgabe ' + (taskIndex+1) + ' / ' + currentTasks.length;
+    mechTag.textContent = task.tag;
+    promptText.textContent = task.prompt;
+    hintText.textContent = 'Löse die Aufgabe auf deinem Blatt, dann Klick auf "Lösung anzeigen".';
+    solutionArea.classList.add('hidden');
+    answerText.textContent = task.answer;
+    judgeRow.classList.remove('hidden');
+    feedbackText.textContent = '';
+    feedbackText.className = 'feedback';
+    stepsArea.classList.add('hidden');
+    stepsList.innerHTML = '';
+    nextTaskBtn.classList.add('hidden');
+    showSolutionBtn.classList.remove('hidden');
+    lastCorrect = null;
+  }
+
+  showSolutionBtn.addEventListener('click', function(){
+    showSolutionBtn.classList.add('hidden');
+    solutionArea.classList.remove('hidden');
+  });
+
+  function judge(correct){
+    lastCorrect = correct;
+    const s = statFor(currentCatId);
+    s.attempted++;
+    if(correct) s.correct++;
+    if(s.attempted >= currentTasks.length) s.done = true;
+
+    judgeRow.classList.add('hidden');
+    if(correct){
+      feedbackText.textContent = 'Stark! Weiter geht’s.';
+      feedbackText.className = 'feedback ok';
+    } else {
+      feedbackText.textContent = 'Kein Problem – schau dir den Lösungsweg genau an.';
+      feedbackText.className = 'feedback bad';
+      const task = currentTasks[taskIndex];
+      stepsList.innerHTML = '';
+      task.steps.forEach(function(step){
+        const li = document.createElement('li');
+        li.textContent = step;
+        stepsList.appendChild(li);
+      });
+      stepsArea.classList.remove('hidden');
+    }
+    nextTaskBtn.classList.remove('hidden');
+  }
+  correctBtn.addEventListener('click', function(){ judge(true); });
+  wrongBtn.addEventListener('click', function(){ judge(false); });
+
+  nextTaskBtn.addEventListener('click', function(){
+    if(taskIndex < currentTasks.length - 1){
+      taskIndex++;
+      renderTask();
+    } else {
+      showDone();
+    }
+  });
+
+  function showDone(){
+    const s = statFor(currentCatId);
+    submitResult(currentCatId, s);
+    taskScreen.classList.add('hidden');
+    doneScreen.classList.remove('hidden');
+    doneTitle.textContent = s.correct === currentTasks.length ? 'Alles richtig!' : 'Station geschafft!';
+    doneSub.textContent = 'Du hast ' + s.correct + ' von ' + currentTasks.length + ' Aufgaben richtig gelöst.';
+  }
+
+  function backToOverview(){
+    taskScreen.classList.add('hidden');
+    doneScreen.classList.add('hidden');
+    overviewScreen.classList.remove('hidden');
+    renderOverview();
+  }
+  backLink.addEventListener('click', function(e){ e.preventDefault(); backToOverview(); });
+  doneBackBtn.addEventListener('click', backToOverview);
+
+  resetBtn.addEventListener('click', function(){
+    if(confirm('Zu einem neuen Namen wechseln? Der Fortschritt dieser Sitzung geht dabei verloren (er wurde aber schon pro Station gespeichert).')){
+      goToNameScreen();
+    }
+  });
+
+  /* ---------- name screen wiring ---------- */
+  // The whitelist is only ever used to check what a student types — it is
+  // never rendered, so classmates can't see each other's codenames.
+  // null = not loaded yet / load failed → free entry without checking.
+  // array = loaded successfully → typed name must match (case-insensitive).
+  let loadedWhitelist = null;
+
+  function findWhitelistMatch(typed){
+    const norm = typed.trim().toLowerCase();
+    return loadedWhitelist.filter(function(n){ return n.toLowerCase() === norm; })[0] || null;
+  }
+
+  function initNameScreen(){
+    nameInputField.disabled = false;
+    if(!isScriptConfigured()){
+      nameHint.textContent = 'Hinweis: Die Codenamen-Prüfung ist noch nicht eingerichtet. Trage deinen Codenamen ein.';
+      return;
+    }
+    nameHint.textContent = 'Trage deinen Codenamen ein (kein Codename? → "Gast" eintragen).';
+    loadWhitelist(function(names){
+      if(names && names.length){
+        loadedWhitelist = names;
+      } else {
+        nameHint.textContent = 'Hinweis: Codenamen-Liste gerade nicht erreichbar – deine Eingabe wird nicht geprüft.';
+      }
+    });
+  }
+
+  const GAST_NAME = 'Gast';
+  function isGast(typed){ return typed.trim().toLowerCase() === GAST_NAME.toLowerCase(); }
+
+  nameInputField.addEventListener('input', function(){
+    nameStartBtn.disabled = !nameInputField.value.trim();
+    nameError.textContent = '';
+  });
+  nameInputField.addEventListener('keydown', function(e){
+    if(e.key === 'Enter' && !nameStartBtn.disabled) nameStartBtn.click();
+  });
+  nameStartBtn.addEventListener('click', function(){
+    const typed = nameInputField.value.trim();
+    if(!typed) return;
+    if(isGast(typed)){
+      currentStudentName = GAST_NAME;
+    } else if(loadedWhitelist){
+      const match = findWhitelistMatch(typed);
+      if(!match){
+        nameError.textContent = 'Dieser Codename steht nicht auf der Liste. Bitte überprüfe die Schreibweise (oder trage "Gast" ein).';
+        return;
+      }
+      currentStudentName = match;
+    } else {
+      currentStudentName = typed;
+    }
+    nameError.textContent = '';
+    stats = {};
+    nameScreen.classList.add('hidden');
+    overviewScreen.classList.remove('hidden');
+    renderOverview();
+  });
+
+  function goToNameScreen(){
+    currentStudentName = null;
+    stats = {};
+    taskScreen.classList.add('hidden');
+    doneScreen.classList.add('hidden');
+    overviewScreen.classList.add('hidden');
+    nameInputField.value = '';
+    nameError.textContent = '';
+    nameStartBtn.disabled = true;
+    nameScreen.classList.remove('hidden');
+  }
+
+  initNameScreen();
+})();
+</script>
+</body>
+</html>
