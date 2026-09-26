@@ -14,10 +14,9 @@
  *   - "Gesamtergebnisse": wird automatisch überschrieben — eine Zeile pro Codename
  *     mit Gesamtpunktzahl (bester Versuch je Station aufsummiert, von MAX_TOTAL_POINTS)
  *     und dem Zeitpunkt der letzten Aktivität.
- *   - "Ergebnisse Gäste": wie "Ergebnisse", aber nur Einsendungen mit dem
- *     Codenamen "Gast" (der keine eindeutige Person identifiziert, daher getrennt).
- *   - "Gesamtergebnisse Gäste": wie "Gesamtergebnisse", aber aus "Ergebnisse Gäste"
- *     berechnet (ergibt praktisch eine gemeinsame "Gast"-Zeile über alle Gäste).
+ *   - "Gast-Ergebnisse": wie "Ergebnisse", aber nur Einsendungen mit dem Codenamen
+ *     "Gast" (der keine eindeutige Person identifiziert). Keine eigene
+ *     Gesamtergebnisse-Zusammenfassung dafür — bewusst nur der Rohlog.
  */
 
 // 11 Stationen × 6 Aufgaben im Tool — bei Änderungen dort auch hier anpassen.
@@ -45,12 +44,11 @@ function doPost(e) {
   var name = (data.name || '').toString().trim();
   var ss = SpreadsheetApp.getActiveSpreadsheet();
 
-  // "Gast" identifiziert keine bestimmte Person — geht in die "Gäste"-Tabs
-  // und wird nie gegen die Whitelist geprüft.
+  // "Gast" identifiziert keine bestimmte Person — geht nur in den Rohlog,
+  // wird nie gegen die Whitelist geprüft und fließt nicht in Gesamtergebnisse ein.
   if (name.toLowerCase() === 'gast') {
-    var gastSheet = ss.getSheetByName('Ergebnisse Gäste') || ss.insertSheet('Ergebnisse Gäste');
+    var gastSheet = ss.getSheetByName('Gast-Ergebnisse') || ss.insertSheet('Gast-Ergebnisse');
     gastSheet.appendRow([new Date(), 'Gast', data.station || '', data.correct, data.total]);
-    updateSummaryFor('Ergebnisse Gäste', 'Gesamtergebnisse Gäste');
     return ContentService.createTextOutput('OK (Gast)');
   }
 
@@ -68,7 +66,7 @@ function doPost(e) {
     data.correct,
     data.total
   ]);
-  updateSummaryFor('Ergebnisse', 'Gesamtergebnisse');
+  updateSummary();
   return ContentService.createTextOutput('OK');
 }
 
@@ -85,17 +83,14 @@ function getWhitelistNames() {
   return names;
 }
 
-// Baut den Ziel-Tab komplett neu auf: pro Codename der beste Versuch je Station
-// aufsummiert (Wiederholungen zählen nur mit ihrem besten Ergebnis), plus der
-// Zeitpunkt der letzten Aktivität. Wird für "Ergebnisse"→"Gesamtergebnisse" und
-// "Ergebnisse Gäste"→"Gesamtergebnisse Gäste" genutzt. Kann auch manuell im
-// Apps-Script-Editor ausgeführt werden (Funktion auswählen → ▶ Run), um die
-// Übersicht ohne neue Einsendung sofort zu aktualisieren.
-function updateSummaryFor(sourceSheetName, targetSheetName) {
+// Baut den Tab "Gesamtergebnisse" komplett neu auf: pro Codename der beste
+// Versuch je Station aufsummiert (Wiederholungen zählen nur mit ihrem besten
+// Ergebnis), plus der Zeitpunkt der letzten Aktivität. Kann auch manuell im
+// Apps-Script-Editor ausgeführt werden (Funktion "updateSummary" auswählen →
+// ▶ Run), um die Übersicht ohne neue Einsendung sofort zu aktualisieren.
+function updateSummary() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sourceSheet = ss.getSheetByName(sourceSheetName);
-  if (!sourceSheet) return;
-  var results = sourceSheet.getDataRange().getValues();
+  var results = ss.getSheetByName('Ergebnisse').getDataRange().getValues();
   var best = {};     // Codename -> { Station -> bestes "Richtig" }
   var lastSeen = {}; // Codename -> letzter Zeitstempel
 
@@ -116,7 +111,7 @@ function updateSummaryFor(sourceSheetName, targetSheetName) {
     if (!isNaN(ts.getTime()) && (!lastSeen[name] || ts > lastSeen[name])) lastSeen[name] = ts;
   }
 
-  var summarySheet = ss.getSheetByName(targetSheetName) || ss.insertSheet(targetSheetName);
+  var summarySheet = ss.getSheetByName('Gesamtergebnisse') || ss.insertSheet('Gesamtergebnisse');
   summarySheet.clearContents();
   summarySheet.appendRow(['Codename', 'Punkte', 'Zeitstempel']);
 
@@ -126,11 +121,4 @@ function updateSummaryFor(sourceSheetName, targetSheetName) {
     Object.keys(best[name]).forEach(function (station) { total += best[name][station]; });
     summarySheet.appendRow([name, total + ' / ' + MAX_TOTAL_POINTS, lastSeen[name] || '']);
   });
-}
-
-// Manuell im Editor ausführbar, falls du die Übersichten ohne neue
-// Einsendung sofort aktualisieren willst.
-function updateSummary() {
-  updateSummaryFor('Ergebnisse', 'Gesamtergebnisse');
-  updateSummaryFor('Ergebnisse Gäste', 'Gesamtergebnisse Gäste');
 }
