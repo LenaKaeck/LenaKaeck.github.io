@@ -12,13 +12,15 @@
  *   - "Ergebnisse": columns A=Zeitstempel, B=Codename, C=Station, D=Richtig, E=Von
  *     (header row optional — appendRow just adds below whatever is already there)
  *   - "Gesamtergebnisse": wird automatisch überschrieben — eine Zeile pro Codename
- *     mit der Summe ALLER jemals erzielten Punkte (über alle Einsendungen/Runden
- *     hinweg — kann bei mehrfachem Spielen also über 66 steigen) und dem
- *     Zeitpunkt der letzten Aktivität.
+ *     mit Gesamtpunktzahl (bester Versuch je Station aufsummiert, von MAX_TOTAL_POINTS)
+ *     und dem Zeitpunkt der letzten Aktivität.
  *   - "Gast-Ergebnisse": wie "Ergebnisse", aber nur Einsendungen mit dem Codenamen
  *     "Gast" (der keine eindeutige Person identifiziert). Keine eigene
  *     Gesamtergebnisse-Zusammenfassung dafür — bewusst nur der Rohlog.
  */
+
+// 11 Stationen × 6 Aufgaben im Tool — bei Änderungen dort auch hier anpassen.
+var MAX_TOTAL_POINTS = 66;
 
 function doGet(e) {
   var action = e.parameter.action;
@@ -81,16 +83,16 @@ function getWhitelistNames() {
   return names;
 }
 
-// Baut den Tab "Gesamtergebnisse" komplett neu auf: pro Codename die Summe
-// ALLER jemals erzielten Punkte (jede Einsendung zählt voll, auch bei
-// mehrfach gespielten Stationen — kann also über die Zeit beliebig weiter
-// wachsen), plus der Zeitpunkt der letzten Aktivität. Kann auch manuell im
-// Apps-Script-Editor ausgeführt werden (Funktion "updateSummary" auswählen →
-// ▶ Run), um die Übersicht ohne neue Einsendung sofort zu aktualisieren.
+// Baut den Tab "Gesamtergebnisse" komplett neu auf: pro Codename der beste
+// Versuch je Station aufsummiert (Wiederholungen zählen nur mit ihrem besten
+// Ergebnis, gedeckelt bei MAX_TOTAL_POINTS), plus der Zeitpunkt der letzten
+// Aktivität. Kann auch manuell im Apps-Script-Editor ausgeführt werden
+// (Funktion "updateSummary" auswählen → ▶ Run), um die Übersicht ohne neue
+// Einsendung sofort zu aktualisieren.
 function updateSummary() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var results = ss.getSheetByName('Ergebnisse').getDataRange().getValues();
-  var totals = {};   // Codename -> Summe aller "Richtig"-Werte
+  var best = {};     // Codename -> { Station -> bestes "Richtig" }
   var lastSeen = {}; // Codename -> letzter Zeitstempel
 
   for (var i = 0; i < results.length; i++) {
@@ -100,9 +102,13 @@ function updateSummary() {
     // Kopfzeile/leere Zeilen überspringen — anhand der Punktzahl, nicht des
     // Zeitstempel-Typs (der je nach Zellformatierung mal Date, mal Text ist).
     if (!name || isNaN(correct)) continue;
+    var station = row[2];
     var rawTs = row[0];
     var ts = (rawTs instanceof Date) ? rawTs : new Date(rawTs);
-    totals[name] = (totals[name] || 0) + correct;
+    if (!best[name]) best[name] = {};
+    if (best[name][station] === undefined || correct > best[name][station]) {
+      best[name][station] = correct;
+    }
     if (!isNaN(ts.getTime()) && (!lastSeen[name] || ts > lastSeen[name])) lastSeen[name] = ts;
   }
 
@@ -110,8 +116,10 @@ function updateSummary() {
   summarySheet.clearContents();
   summarySheet.appendRow(['Codename', 'Punkte', 'Zeitstempel']);
 
-  var names = Object.keys(totals).sort(function (a, b) { return a.localeCompare(b, 'de'); });
+  var names = Object.keys(best).sort(function (a, b) { return a.localeCompare(b, 'de'); });
   names.forEach(function (name) {
-    summarySheet.appendRow([name, totals[name], lastSeen[name] || '']);
+    var total = 0;
+    Object.keys(best[name]).forEach(function (station) { total += best[name][station]; });
+    summarySheet.appendRow([name, total + ' / ' + MAX_TOTAL_POINTS, lastSeen[name] || '']);
   });
 }
