@@ -173,6 +173,9 @@
     <p class="hint" id="nameError" style="color:var(--red); min-height:1.2em; margin-top:8px;"></p>
     <div style="text-align:center; margin-top:10px;">
       <button class="btn" id="nameStartBtn" disabled>Los geht&rsquo;s &#127807;</button>
+      <div style="margin-top:10px;">
+        <button class="btn ghost hidden" id="whitelistRetryBtn" type="button">&#8635; Erneut versuchen</button>
+      </div>
     </div>
   </div>
 
@@ -914,6 +917,7 @@
   const nameInputField = document.getElementById('nameInputField');
   const nameError = document.getElementById('nameError');
   const nameStartBtn = document.getElementById('nameStartBtn');
+  const whitelistRetryBtn = document.getElementById('whitelistRetryBtn');
 
   const GROUPS = [
     { key:'bf', label:'\u{1F334} Binomische Formeln' },
@@ -1071,30 +1075,43 @@
   /* ---------- name screen wiring ---------- */
   // The whitelist is only ever used to check what a student types — it is
   // never rendered, so classmates can't see each other's codenames.
-  // null = not loaded yet / load failed → free entry without checking.
-  // array = loaded successfully → typed name must match (case-insensitive).
-  let loadedWhitelist = null;
+  // Only "Gast" or an exact (case-insensitive) whitelist match may enter —
+  // there is no free-text fallback, even if the whitelist fails to load.
+  let loadedWhitelist = null;   // array once loaded successfully, else null
+  let whitelistLoadDone = false; // true once a load attempt has finished (success or fail)
 
   function findWhitelistMatch(typed){
     const norm = typed.trim().toLowerCase();
     return loadedWhitelist.filter(function(n){ return n.toLowerCase() === norm; })[0] || null;
   }
 
-  function initNameScreen(){
-    nameInputField.disabled = false;
-    if(!isScriptConfigured()){
-      nameHint.textContent = 'Hinweis: Die Codenamen-Prüfung ist noch nicht eingerichtet. Trage deinen Codenamen ein.';
-      return;
-    }
-    nameHint.textContent = 'Trage deinen Codenamen ein (kein Codename? → "Gast" eintragen).';
+  function startWhitelistLoad(){
+    whitelistRetryBtn.classList.add('hidden');
+    nameError.textContent = '';
+    nameHint.textContent = 'Codenamen-Liste wird geladen …';
     loadWhitelist(function(names){
+      whitelistLoadDone = true;
       if(names && names.length){
         loadedWhitelist = names;
+        nameHint.textContent = 'Trage deinen Codenamen ein (kein Codename? → "Gast" eintragen).';
       } else {
-        nameHint.textContent = 'Hinweis: Codenamen-Liste gerade nicht erreichbar – deine Eingabe wird nicht geprüft.';
+        loadedWhitelist = null;
+        nameHint.textContent = '"Gast" geht immer. Ein Codename braucht die Liste, die gerade nicht erreichbar ist:';
+        whitelistRetryBtn.classList.remove('hidden');
       }
     });
   }
+
+  function initNameScreen(){
+    nameInputField.disabled = false;
+    if(!isScriptConfigured()){
+      whitelistLoadDone = true;
+      nameHint.textContent = 'Hinweis: Die Codenamen-Prüfung ist noch nicht eingerichtet. Nur "Gast" geht gerade.';
+      return;
+    }
+    startWhitelistLoad();
+  }
+  whitelistRetryBtn.addEventListener('click', startWhitelistLoad);
 
   const GAST_NAME = 'Gast';
   function isGast(typed){ return typed.trim().toLowerCase() === GAST_NAME.toLowerCase(); }
@@ -1118,8 +1135,12 @@
         return;
       }
       currentStudentName = match;
+    } else if(!whitelistLoadDone){
+      nameError.textContent = 'Die Codenamen-Liste lädt noch — bitte kurz warten (oder "Gast" eintragen).';
+      return;
     } else {
-      currentStudentName = typed;
+      nameError.textContent = 'Die Codenamen-Liste ist gerade nicht erreichbar. Bitte "Erneut versuchen" klicken (oder "Gast" eintragen).';
+      return;
     }
     nameError.textContent = '';
     stats = {};
