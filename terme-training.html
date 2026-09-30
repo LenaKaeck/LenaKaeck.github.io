@@ -797,7 +797,7 @@
      ========================================================= */
   // ⚠️ Nach dem Einrichten der Google Apps Script Web-App (siehe Anleitung) hier die URL eintragen:
   const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxwZC6JF8H-i3vL2O940F1M6SPow2ulOiI7r5oGlhPpf-zFp7u_o6j0hL-2lw4fs0q9/exec';
-  const WHITELIST_TIMEOUT_MS = 6000;
+  const WHITELIST_TIMEOUT_MS = 15000; // Apps Script antwortet manchmal erst nach 5+ Sekunden (z.B. bei "kaltem Start")
 
   let currentStudentName = null;
 
