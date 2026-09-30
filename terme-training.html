@@ -1085,6 +1085,15 @@
     return loadedWhitelist.filter(function(n){ return n.toLowerCase() === norm; })[0] || null;
   }
 
+  // Zählt fehlgeschlagene Ladeversuche über echte Seiten-Neuladen hinweg (nicht
+  // dauerhaft gespeichert, nur für die aktuelle Browser-Sitzung).
+  function getWhitelistFailCount(){
+    try{ return parseInt(sessionStorage.getItem('wlFailCount') || '0', 10) || 0; } catch(e){ return 0; }
+  }
+  function setWhitelistFailCount(n){
+    try{ sessionStorage.setItem('wlFailCount', String(n)); } catch(e){}
+  }
+
   function startWhitelistLoad(){
     whitelistRetryBtn.classList.add('hidden');
     nameError.textContent = '';
@@ -1093,10 +1102,17 @@
       whitelistLoadDone = true;
       if(names && names.length){
         loadedWhitelist = names;
+        setWhitelistFailCount(0);
         nameHint.textContent = 'Trage deinen Codenamen ein (kein Codename? → "Gast" eintragen).';
       } else {
         loadedWhitelist = null;
-        nameHint.textContent = '"Gast" geht immer. Ein Codename braucht die Liste, die gerade nicht erreichbar ist:';
+        const fails = getWhitelistFailCount() + 1;
+        setWhitelistFailCount(fails);
+        if(fails < 3){
+          nameHint.textContent = 'Die Codenamen-Liste ist gerade nicht erreichbar. Bitte lade die Seite neu (F5).';
+        } else {
+          nameHint.textContent = 'Die Codenamen-Liste ist weiterhin nicht erreichbar. Lade die Seite gerne nochmal neu — oder trage ersatzweise "Gast" ein.';
+        }
         whitelistRetryBtn.classList.remove('hidden');
       }
     });
@@ -1136,10 +1152,13 @@
       }
       currentStudentName = match;
     } else if(!whitelistLoadDone){
-      nameError.textContent = 'Die Codenamen-Liste lädt noch — bitte kurz warten (oder "Gast" eintragen).';
+      nameError.textContent = 'Die Codenamen-Liste lädt noch — bitte kurz warten.';
+      return;
+    } else if(getWhitelistFailCount() < 3){
+      nameError.textContent = 'Die Codenamen-Liste ist gerade nicht erreichbar. Bitte lade die Seite neu (F5).';
       return;
     } else {
-      nameError.textContent = 'Die Codenamen-Liste ist gerade nicht erreichbar. Bitte "Erneut versuchen" klicken (oder "Gast" eintragen).';
+      nameError.textContent = 'Die Codenamen-Liste ist weiterhin nicht erreichbar. Lade die Seite gerne nochmal neu — oder trage ersatzweise "Gast" ein.';
       return;
     }
     nameError.textContent = '';
