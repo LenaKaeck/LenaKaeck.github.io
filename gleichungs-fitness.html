@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gleichungs-Fitness</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-1:#24402F;
+    --bg-2:#1B3323;
+    --chalk:#F3EFE3;
+    --chalk-dim:#C9D6C4;
+    --yellow:#E8C25B;
+    --coral:#E2836B;
+    --green:#93C08C;
+    --blue:#89B7CB;
+    --rail:#12241A;
+    --shadow: 0 10px 30px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box;}
+  html,body{min-height:100%;}
+  body{
+    margin:0;
+    min-height:100vh;
+    background:
+      radial-gradient(circle at 15% 10%, rgba(255,255,255,0.035) 0, transparent 45%),
+      radial-gradient(circle at 85% 90%, rgba(255,255,255,0.03) 0, transparent 40%),
+      linear-gradient(180deg, var(--bg-1), var(--bg-2));
+    font-family:'Space Grotesk', sans-serif;
+    color:var(--chalk);
+    padding:24px 16px 40px;
+  }
+  .board{ width:100%; max-width:820px; margin:0 auto; }
+  .frame{
+    background: repeating-linear-gradient(45deg, #8a5a34, #8a5a34 6px, #7a4c2b 6px, #7a4c2b 12px);
+    border-radius:22px; padding:10px; box-shadow:var(--shadow);
+  }
+  .panel{
+    background: radial-gradient(ellipse at 30% 0%, rgba(255,255,255,0.05), transparent 60%), var(--bg-1);
+    border-radius:16px; padding:28px 26px 26px; position:relative; min-height:520px;
+    display:flex; flex-direction:column;
+  }
+  .panel::before{
+    content:""; position:absolute; inset:0; border-radius:16px;
+    background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px);
+    background-size:14px 14px; opacity:.35; pointer-events:none;
+  }
+  .panel > *{ position:relative; z-index:1; }
+
+  h1{
+    font-family:'Kalam', cursive; font-weight:700;
+    font-size:clamp(1.8rem,5vw,2.6rem); margin:0 0 6px; transform:rotate(-0.6deg);
+  }
+  .sub{ color:var(--chalk-dim); font-size:.95rem; margin:0 0 18px; max-width:60ch; line-height:1.5; }
+  .back{ align-self:flex-start; color:var(--chalk-dim); font-size:.85rem; text-decoration:none; display:inline-block; margin-bottom:12px; background:none; border:none; padding:0; cursor:pointer; font-family:inherit; }
+  .back:hover{ color:var(--yellow); }
+
+  /* Level */
+  .lvl{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:18px; font-size:.9rem; color:var(--chalk-dim); }
+  .seg{ display:inline-flex; border:1.5px solid rgba(243,239,227,.3); border-radius:10px; overflow:hidden; }
+  .seg button{
+    font-family:inherit; font-weight:600; font-size:.9rem; color:var(--chalk); background:transparent;
+    border:none; padding:8px 16px; cursor:pointer;
+  }
+  .seg button.on{ background:var(--yellow); color:#2B2110; }
+  .seg button:focus-visible{ outline:2px solid var(--blue); outline-offset:-2px; }
+
+  /* Menu grid */
+  .grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:14px; }
+  .st{
+    font-family:inherit; color:var(--chalk); text-align:left; cursor:pointer;
+    background:rgba(255,255,255,.04); border:1.5px solid rgba(243,239,227,.25);
+    border-radius:12px; padding:14px 14px 12px; display:flex; flex-direction:column; gap:6px;
+    transition:background .15s, border-color .15s, transform .1s;
+  }
+  .st:hover{ background:rgba(255,255,255,.09); border-color:rgba(243,239,227,.5); transform:translateY(-2px); }
+  .st:focus-visible{ outline:2px solid var(--blue); outline-offset:2px; }
+  .st .ic{ font-family:'Kalam',cursive; font-weight:700; font-size:1.5rem; color:var(--yellow); line-height:1.1; min-height:1.7rem; }
+  .st .nm{ font-weight:700; font-size:1.02rem; }
+  .st .ds{ color:var(--chalk-dim); font-size:.82rem; line-height:1.4; flex:1; }
+  .st .bs{ font-size:.8rem; color:var(--yellow); min-height:1.1em; }
+  .st.mix{ border-color:var(--yellow); }
+
+  /* Play HUD */
+  .hud{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:10px; }
+  .hud .nm{ font-family:'Kalam',cursive; font-weight:700; font-size:1.2rem; }
+  .hud .stats{ display:flex; gap:16px; align-items:center; font-size:.92rem; font-variant-numeric:tabular-nums; }
+  .score{ font-weight:700; color:var(--yellow); }
+  .streak{ color:var(--coral); font-weight:600; min-width:4.5em; }
+  .prog{ height:8px; border-radius:6px; background:var(--rail); overflow:hidden; margin-bottom:22px; }
+  .prog > div{ height:100%; background:linear-gradient(90deg,var(--green),var(--yellow)); border-radius:6px; transition:width .3s; }
+
+  .qwrap{ display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:10px 0 20px; flex:1; }
+  .qlabel{ font-size:.85rem; color:var(--chalk-dim); margin-bottom:12px; }
+  .expr{
+    font-family:'Kalam',cursive; font-weight:700; font-size:clamp(1.9rem,6.5vw,2.9rem);
+    line-height:1.35; word-break:break-word;
+  }
+  .frac{ display:inline-flex; flex-direction:column; align-items:center; vertical-align:middle; margin:0 .12em; line-height:1.1; font-size:.85em; }
+  .frac .n{ border-bottom:.07em solid currentColor; padding:0 .25em .06em; }
+  .frac .d{ padding:.06em .25em 0; }
+  sup{ font-size:.62em; line-height:0; }
+
+  .options{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  @media (max-width:560px){ .options{ grid-template-columns:1fr; } .panel{ padding:22px 16px 20px; } }
+  .opt{
+    font-family:'Space Grotesk',sans-serif; font-size:1.15rem; font-weight:600; color:var(--chalk);
+    background:rgba(255,255,255,.04); border:1.5px solid rgba(243,239,227,.28); border-radius:10px;
+    padding:15px 14px; cursor:pointer; display:flex; align-items:center; gap:12px; text-align:left;
+    transition:background .15s, border-color .15s, transform .1s; min-height:58px;
+  }
+  .opt .k{ font-size:.75rem; opacity:.65; border:1px solid rgba(243,239,227,.4); border-radius:5px; padding:1px 6px; flex-shrink:0; }
+  .opt:hover:not([disabled]){ background:rgba(255,255,255,.09); border-color:rgba(243,239,227,.5); }
+  .opt:active:not([disabled]){ transform:scale(.98); }
+  .opt:focus-visible{ outline:2px solid var(--blue); outline-offset:2px; }
+  .opt.correct{ background:rgba(147,192,140,.25); border-color:var(--green); }
+  .opt.wrong{ background:rgba(226,131,107,.25); border-color:var(--coral); }
+  .opt[disabled]{ cursor:default; }
+
+  .inrow{ display:flex; gap:10px; justify-content:center; align-items:stretch; flex-wrap:wrap; }
+  .inrow input{
+    font-family:'Space Grotesk',sans-serif; font-size:1.3rem; font-weight:600; color:var(--chalk);
+    background:rgba(255,255,255,.06); border:1.5px solid rgba(243,239,227,.4); border-radius:10px;
+    padding:12px 16px; width:min(260px,100%); text-align:center;
+  }
+  .inrow input:focus{ outline:2px solid var(--blue); outline-offset:2px; }
+  .inrow input.ok{ border-color:var(--green); background:rgba(147,192,140,.2); }
+  .inrow input.bad{ border-color:var(--coral); background:rgba(226,131,107,.2); }
+  .keys{ display:flex; gap:8px; justify-content:center; margin-top:10px; }
+  .keys button{
+    font-family:inherit; font-size:1.1rem; font-weight:700; color:var(--chalk); background:rgba(255,255,255,.06);
+    border:1.5px solid rgba(243,239,227,.3); border-radius:8px; width:48px; height:40px; cursor:pointer;
+  }
+  .keys button:hover{ background:rgba(255,255,255,.12); }
+  .tiny{ color:var(--chalk-dim); font-size:.78rem; text-align:center; margin-top:8px; min-height:1.2em; }
+  .tiny.err{ color:var(--coral); }
+
+  .btn{
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.02rem; background:var(--yellow); color:#2B2110;
+    border:none; border-radius:10px; padding:13px 28px; cursor:pointer; box-shadow:0 4px 0 #b58f37;
+    transition:transform .08s, box-shadow .08s;
+  }
+  .btn:active{ transform:translateY(3px); box-shadow:0 1px 0 #b58f37; }
+  .btn:focus-visible{ outline:2px solid var(--blue); outline-offset:3px; }
+  .btn.ghost{ background:transparent; color:var(--chalk); border:1.5px solid rgba(243,239,227,.4); box-shadow:none; }
+  .btn.ghost:active{ transform:scale(.98); }
+  .btnrow{ display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-top:16px; }
+
+  .fb{ margin-top:18px; border-radius:12px; padding:14px 16px; border:1.5px solid; text-align:left; }
+  .fb.ok{ background:rgba(147,192,140,.14); border-color:var(--green); }
+  .fb.bad{ background:rgba(226,131,107,.14); border-color:var(--coral); }
+  .fb .hd{ font-weight:700; font-size:1.05rem; margin-bottom:6px; }
+  .fb .hd .pts{ color:var(--yellow); margin-left:6px; }
+  .fb .sol{ color:var(--chalk-dim); font-size:.95rem; line-height:1.7; }
+  .fb .sol b{ color:var(--chalk); }
+
+  /* result */
+  .center{ text-align:center; }
+  .big{ font-family:'Kalam',cursive; font-weight:700; font-size:clamp(2.6rem,9vw,3.6rem); color:var(--yellow); line-height:1.1; }
+  .stars{ font-size:2rem; letter-spacing:6px; color:var(--yellow); margin:6px 0; }
+  .wlist{ text-align:left; margin-top:18px; display:flex; flex-direction:column; gap:10px; }
+  .witem{ background:rgba(255,255,255,.04); border:1px solid rgba(243,239,227,.18); border-radius:10px; padding:10px 14px; font-size:.95rem; line-height:1.6; }
+  .witem .q{ font-family:'Kalam',cursive; font-size:1.3rem; font-weight:700; }
+  .witem .y{ color:var(--coral); }
+  .witem .r{ color:var(--green); }
+  .hidden{ display:none !important; }
+
+  @media (prefers-reduced-motion: reduce){ *{ transition:none !important; animation:none !important; } }
+</style>
+</head>
+<body>
+<div class="board"><div class="frame"><div class="panel" id="app"></div></div></div>
+
+<script>
+(function(){
+'use strict';
+
+/* ================= Hilfsfunktionen ================= */
+const M='−', DOT='·', NB=' ';
+const rnd=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
+const pick=a=>a[rnd(0,a.length-1)];
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=rnd(0,i);[a[i],a[j]]=[a[j],a[i]];}return a;};
+const gcd=(a,b)=>{a=Math.abs(a);b=Math.abs(b);while(b){[a,b]=[b,a%b];}return a;};
+const lcm=(a,b)=>Math.abs(a*b)/gcd(a,b);
+const nz=(a,b)=>{let v=0;while(!v)v=rnd(a,b);return v;};
+const nstr=n=>(n<0?M:'')+Math.abs(n);
+const pn=n=>n<0?`(${nstr(n)})`:String(n);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const wN=s=>s.startsWith(M)?`(${s})`:s;
+const divisors=n=>{const r=[];for(let i=1;i<=n;i++)if(n%i===0)r.push(i);return r;};
+
+/* ---- Brüche ---- */
+const F=(n,d=1)=>{if(d<0){n=-n;d=-d;}const g=gcd(n,d)||1;return{n:n/g,d:d/g};};
+const fadd=(a,b)=>F(a.n*b.d+b.n*a.d,a.d*b.d);
+const fsub=(a,b)=>F(a.n*b.d-b.n*a.d,a.d*b.d);
+const fmul=(a,b)=>F(a.n*b.n,a.d*b.d);
+const fdiv=(a,b)=>F(a.n*b.d,a.d*b.n);
+const feq=(a,b)=>a.n===b.n&&a.d===b.d;
+const fracH=(n,d)=>`<span class="frac"><span class="n">${n}</span><span class="d">${d}</span></span>`;
+const fU=(n,d)=>d===1?nstr(n):(n<0?M:'')+fracH(Math.abs(n),d);   // ohne Kürzen
+const fH=f=>fU(f.n,f.d);
+const wU=(n,d)=>n<0?`(${fU(n,d)})`:fU(n,d);
+const decS=f=>{const v=Math.round(f.n/f.d*1e6)/1e6;return (v<0?M:'')+String(Math.abs(v)).replace('.',',');};
+
+/* ---- Terme (Polynome in mehreren Variablen) ---- */
+const pk=k=>{const e={};k.replace(/([a-z])(\d+)/g,(_,v,n)=>{e[v]=+n;return '';});return e;};
+const key=e=>Object.keys(e).filter(v=>e[v]>0).sort().map(v=>v+e[v]).join('');
+const deg=k=>Object.values(pk(k)).reduce((a,b)=>a+b,0);
+const cmpK=(a,b)=>{
+  const da=deg(a),db=deg(b); if(da!==db)return db-da;
+  const ea=pk(a),eb=pk(b);
+  const vs=[...new Set([...Object.keys(ea),...Object.keys(eb)])].sort();
+  for(const v of vs){const x=ea[v]||0,y=eb[v]||0;if(x!==y)return y-x;}
+  return 0;
+};
+const mono=(c,e={})=>{const p={};if(c!==0)p[key(e)]=c;return p;};
+const padd=(p,q)=>{const r={...p};for(const k in q){r[k]=(r[k]||0)+q[k];if(r[k]===0)delete r[k];}return r;};
+const pneg=p=>{const r={};for(const k in p)r[k]=-p[k];return r;};
+const psub=(p,q)=>padd(p,pneg(q));
+const kmul=(a,b)=>{const ea=pk(a),eb=pk(b);for(const v in eb)ea[v]=(ea[v]||0)+eb[v];return key(ea);};
+const pmul=(p,q)=>{let r={};for(const a in p)for(const b in q)r=padd(r,{[kmul(a,b)]:p[a]*q[b]});return r;};
+const pscale=(p,c)=>pmul(p,mono(c));
+const itemsOf=p=>Object.keys(p).sort(cmpK).map(k=>({c:p[k],k}));
+const bodyH=k=>{const e=pk(k);return Object.keys(e).sort().map(v=>e[v]>1?`${v}<sup>${e[v]}</sup>`:v).join('');};
+const cH=(c,k)=>{const b=bodyH(k);const a=Math.abs(c);return (a===1&&b?'':a)+b;};
+const seqH=items=>items.map((t,i)=>i===0?(t.c<0?M:'')+cH(t.c,t.k):`${NB}${t.c<0?M:'+'}${NB}${cH(t.c,t.k)}`).join('');
+const pH=p=>{const it=itemsOf(p);return it.length?seqH(it):'0';};
+const mH=m=>{const k=Object.keys(m)[0];return (m[k]<0?M:'')+cH(m[k],k);};
+const lin=(c,d,v)=>padd(mono(c,{[v]:1}),mono(d));
+const keyOf=p=>Object.keys(p)[0];
+const pdivMono=(p,m)=>{
+  const km=keyOf(m),cm=m[km],em=pk(km);let r={};
+  for(const k in p){
+    if(p[k]%cm!==0)return null;
+    const e=pk(k);
+    for(const v in em){if((e[v]||0)<em[v])return null;e[v]-=em[v];}
+    r=padd(r,{[key(e)]:p[k]/cm});
+  }
+  return r;
+};
+function mutate(p){
+  const r={...p};const k=pick(Object.keys(r));const c=r[k];const op=rnd(0,4);
+  if(op===0)r[k]=-c;
+  else if(op===1)r[k]=c+pick([1,-1]);
+  else if(op===2)r[k]=c+pick([2,-2,3,-3]);
+  else if(op===3)r[k]=c*2;
+  else if(k){const e=pk(k);const v=pick(Object.keys(e));e[v]+=pick([-1,1]);delete r[k];const nk=key(e);r[nk]=(r[nk]||0)+c;}
+  for(const kk in r)if(r[kk]===0)delete r[kk];
+  return r;
+}
+const mutH=p=>{let m,t=0;do{m=mutate(p);}while(!Object.keys(m).length&&t++<8);return pH(m);};
+
+/* ---- Multiple Choice bauen ---- */
+function makeMC(correct,extras,gen,fixed){
+  const set=[correct];
+  shuffle(extras).forEach(e=>{if(e&&set.length<4&&!set.includes(e))set.push(e);});
+  let t=0;while(set.length<4&&t++<100){const g=gen();if(g&&!set.includes(g))set.push(g);}
+  const opts=fixed?fixed:shuffle(set);
+  return {kind:'mc',opts,ans:opts.indexOf(correct),shown:correct};
+}
+const SUP2='<sup>2</sup>';
+const VARS=['x','x','x','a','y','n'];
+
+/* ================= 1. Potenzen ================= */
+function gPot(L){
+  const t=pick(L===1?['sq','sq','negsq','cube','frac','dec','pow','hid']:['sq','negsq','cube','frac','fracneg','dec','dec3','pow','negpow','hid','hidfrac']);
+  let q,v,dec=false,sol,label='Berechne:',acc;
+  if(t==='sq'){
+    const k=rnd(2,L===1?10:13);q=`(${M}${k})${SUP2}`;v=F(k*k);
+    sol=`(${M}${k})${SUP2} = (${M}${k})${DOT}(${M}${k}) = <b>${k*k}</b>. Minus mal Minus ergibt Plus.`;
+  }else if(t==='negsq'){
+    const k=rnd(2,L===1?10:13);q=`${M}${k}${SUP2}`;v=F(-k*k);
+    sol=`Hier gehört das Minus <b>nicht</b> zur Basis. Erst potenzieren, dann das Vorzeichen: ${M}${k}${SUP2} = ${M}(${k}${DOT}${k}) = <b>${M}${k*k}</b>.`;
+  }else if(t==='cube'){
+    const k=rnd(2,5),neg=Math.random()<.6;
+    q=neg?`(${M}${k})<sup>3</sup>`:`${k}<sup>3</sup>`;v=F((neg?-1:1)*k*k*k);
+    sol=neg?`(${M}${k})<sup>3</sup> = (${M}${k})${DOT}(${M}${k})${DOT}(${M}${k}) = ${k*k}${DOT}(${M}${k}) = <b>${M}${k**3}</b>. Ungerade Hochzahl bei negativer Basis: Ergebnis negativ.`
+            :`${k}<sup>3</sup> = ${k}${DOT}${k}${DOT}${k} = <b>${k**3}</b>.`;
+  }else if(t==='frac'){
+    let p,d;do{d=rnd(2,L===1?7:9);p=rnd(1,L===1?5:8);}while(gcd(p,d)!==1);
+    q=`(${fracH(p,d)})${SUP2}`;v=F(p*p,d*d);
+    sol=`Zähler <b>und</b> Nenner quadrieren: ${fracH(p+'<sup>2</sup>',d+'<sup>2</sup>')} = <b>${fU(p*p,d*d)}</b>.`;
+  }else if(t==='fracneg'){
+    let p,d;do{d=rnd(2,6);p=rnd(1,5);}while(gcd(p,d)!==1);
+    const n=pick([2,3]);
+    q=`(${M}${fracH(p,d)})<sup>${n}</sup>`;v=F((n===2?1:-1)*p**n,d**n);
+    sol=`Zähler und Nenner potenzieren: ${fracH(p+'<sup>'+n+'</sup>',d+'<sup>'+n+'</sup>')}. `+(n===2?`Gerade Hochzahl: Ergebnis positiv → <b>${fU(p*p,d*d)}</b>.`:`Ungerade Hochzahl, negative Basis: Ergebnis negativ → <b>${fU(-(p**3),d**3)}</b>.`);
+  }else if(t==='dec'||t==='dec3'){
+    const k=pick(L===1?[2,3,4,5,6,7,8,9]:[2,3,4,5,6,7,8,9,11,12,15]);
+    const base=F(k,10);const cube=t==='dec3';
+    const bs=decS(base);
+    q=`${bs}<sup>${cube?3:2}</sup>`;v=cube?F(k**3,1000):F(k*k,100);dec=true;
+    sol=`Rechne ohne Komma: ${k}${cube?'<sup>3</sup>':SUP2} = ${k**(cube?3:2)}. Dann Nachkommastellen zählen: ${cube?'3 · 1 = 3':'2 · 1 = 2'} Stellen → <b>${decS(v)}</b>.`;
+  }else if(t==='pow'){
+    const b=pick([[2,3,8],[2,5,5],[3,2,3],[3,3,4],[5,3,3],[10,2,4]]);
+    const e=rnd(b[1],b[2]);const base=b[0];
+    q=`${base}<sup>${e}</sup>`;v=F(base**e);
+    sol=`${base}<sup>${e}</sup> = ${Array(e).fill(base).join(DOT)} = <b>${base**e}</b>.`;
+  }else if(t==='negpow'){
+    const base=pick([2,3]);const e=rnd(2,4);const neg=Math.random()<.5;
+    q=neg?`(${M}${base})<sup>${e}</sup>`:`${M}${base}<sup>${e}</sup>`;
+    v=neg?F((e%2?-1:1)*base**e):F(-(base**e));
+    sol=neg?`Negative Basis in Klammern: bei ${e%2?'ungerader':'gerader'} Hochzahl ${e%2?'negativ':'positiv'} → <b>${nstr(v.n)}</b>.`
+           :`Das Minus gehört nicht zur Basis: ${M}(${base}<sup>${e}</sup>) = <b>${M}${base**e}</b>.`;
+  }else if(t==='hid'){
+    label='Quadratzahl versteckt:';
+    const r=pick(L===1?[{b:F(3,10)},{b:F(7,10)},{b:F(4,10)},{b:F(12,1)},{b:F(9,1)},{b:F(15,1)},{b:F(6,10)}]:[{b:F(12,10)},{b:F(15,10)},{b:F(11,10)},{b:F(5,100)},{b:F(8,10)},{b:F(14,1)},{b:F(25,1)}]);
+    const sq=fmul(r.b,r.b);
+    q=`Welche <b>positive</b> Zahl ergibt im Quadrat ${r.b.d===1?sq.n:decS(sq)}?`;
+    v=r.b;dec=r.b.d!==1;
+    sol=`Gesucht: ?${SUP2} = ${r.b.d===1?sq.n:decS(sq)}. Es ist ${dec?decS(r.b):r.b.n}${SUP2} = ${r.b.d===1?sq.n:decS(sq)}, also <b>${dec?decS(r.b):r.b.n}</b>${dec?' (Tipp: Bei Dezimalzahlen halbiert sich die Zahl der Nachkommastellen).':'.'}`;
+  }else{
+    label='Quadratzahl versteckt:';
+    const pairs=[[1,2],[2,3],[3,4],[3,5],[5,6],[4,5],[2,7],[7,8],[5,9],[1,3]];
+    const [p,d]=pick(pairs);const sq=F(p*p,d*d);
+    q=`Welche <b>positive</b> Zahl ergibt im Quadrat ${fracH(p*p,d*d)}?`;
+    v=F(p,d);
+    sol=`Zähler und Nenner einzeln betrachten: ${p*p} = ${p}${SUP2} und ${d*d} = ${d}${SUP2}. Also ist ${fracH(p*p,d*d)} = (${fracH(p,d)})${SUP2}. Antwort: <b>${fU(p,d)}</b>.`;
+  }
+  return {kind:'num',label,q,acc:[v],dec,shown:dec?decS(v):fH(v),sol};
+}
+
+/* ================= 2. Zusammenfassen ================= */
+function gZus(L){
+  const t=pick(L===1?['add','add','mul','div']:['add2','add2','add','mul','mul','div','div']);
+  const V=pick(VARS);
+  if(t==='add'||t==='add2'){
+    const rc=()=>nz(L===1?-6:-9,9);
+    let items,sum;
+    do{
+      items=[];
+      if(t==='add'){const n=L===1?rnd(3,4):rnd(4,5);for(let i=0;i<n;i++)items.push({c:rc(),k:V+'1'});items[0].c=Math.abs(items[0].c);}
+      else{
+        const pool=pick([[V+'2',V+'1',''],[V+'1','y1',''],[V+'2',V+'1'],[V+'1','y1'],['a1','b1','']].map(a=>a.map(k=>k)));
+        const keys=shuffle(pool).slice(0,rnd(2,3));
+        keys.forEach(k=>{items.push({c:rc(),k},{c:rc(),k});});
+        items=shuffle(items);
+      }
+      sum={};items.forEach(it=>{sum=padd(sum,{[it.k]:it.c});});
+    }while(!Object.keys(sum).length);
+    const q=seqH(items);
+    const correct=pH(sum);
+    const total=items.reduce((a,b)=>a+b.c,0);
+    const hi=items.map(i=>i.k).sort(cmpK)[0];
+    let abs={};items.forEach(i=>{abs=padd(abs,{[i.k]:Math.abs(i.c)});});
+    const extras=[total?pH(mono(total,pk(hi))):null,pH(abs)];
+    const groups=[];items.forEach(i=>{let g=groups.find(g=>g.k===i.k);if(!g){g={k:i.k,cs:[]};groups.push(g);}g.cs.push(i.c);});
+    const sol=`Nur <b>gleichartige</b> Terme (gleiche Variable, gleiche Hochzahl) darf man zusammenfassen:<br>`+
+      groups.map(g=>{const s=g.cs.reduce((a,b)=>a+b,0);return `${g.k===''?'Zahlen':bodyH(g.k)+'-Terme'}: ${g.cs.map((c,i)=>i?(c<0?`+ (${nstr(c)})`:`+ ${c}`):nstr(c)).join(' ')} = ${nstr(s)}${s===0?' (fällt weg)':''}`;}).join('<br>')+`<br>Ergebnis: <b>${correct}</b>`;
+    return Object.assign({label:'Fasse so weit wie möglich zusammen:',q},makeMC(correct,extras,()=>mutH(sum)),{sol});
+  }
+  if(t==='mul'){
+    const c1=L===1?(Math.random()<.2?-rnd(2,9):rnd(2,9)):nz(-9,9),c2=L===1?rnd(2,9):nz(-9,9);
+    const kind=L===1?pick(['same','diff']):pick(['same','diff','pow','pow2']);
+    let e1,e2,note;
+    if(kind==='same'){e1={[V]:1};e2={[V]:1};note=`${V}${DOT}${V} = ${V}${SUP2}`;}
+    else if(kind==='diff'){e1={x:1};e2={y:1};note=`x${DOT}y = xy`;}
+    else if(kind==='pow'){e1={[V]:2};e2={[V]:1};note=`${V}${SUP2}${DOT}${V} = ${V}<sup>3</sup> (Hochzahlen addieren)`;}
+    else{e1={a:1};e2={a:1,b:1};note=`a${DOT}ab = a${SUP2}b`;}
+    const f1=mono(c1,e1),f2=mono(c2,e2),P=pmul(f1,f2);
+    const q=`${wN(pH(f1))}${NB}${DOT}${NB}${wN(pH(f2))}`;
+    const correct=pH(P);
+    const extras=[pH(mono(c1+c2,pk(keyOf(P)))),pH(mono(c1*c2,pk(keyOf(f1))))];
+    const sol=`Zahlen multiplizieren: ${pn(c1)}${DOT}${pn(c2)} = ${nstr(c1*c2)}. Variablen multiplizieren: ${note}.<br>Ergebnis: <b>${correct}</b>`;
+    return Object.assign({label:'Vereinfache:',q},makeMC(correct,extras,()=>mutH(P)),{sol});
+  }
+  // div
+  const d=L===1?rnd(2,6):nz(-6,6)*(Math.random()<.5?1:1),r=L===1?rnd(2,9):nz(-9,9);
+  const pairs=L===1?[[{[V]:1},{[V]:1}],[{[V]:1},{[V]:2}],[{[V]:1},{}]]
+                   :[[{a:1},{b:1}],[{[V]:2},{[V]:1}],[{x:1,y:1},{x:1}],[{[V]:1},{}],[{[V]:2},{[V]:2}],[{a:1,b:1},{a:1}]];
+  const [eD,eR]=pick(pairs);
+  const D=mono(Math.abs(d)<2?2:d,eD),R=mono(r,eR),P=pmul(D,R);
+  const dd=D[keyOf(D)];
+  const q=`${pH(P)}${NB}:${NB}${wN(pH(D))}`;
+  const correct=pH(R);
+  const extras=[pH(mono(r,pk(keyOf(P)))),Object.keys(eR).length?pH(mono(r)):pH(mono(r,{[V]:1}))];
+  const sol=`Zahlen dividieren: ${nstr(P[keyOf(P)])} : ${pn(dd)} = ${nstr(r)}. Variablen: gleiche Variablen kürzen sich, bei Potenzen werden die Hochzahlen subtrahiert.<br>Ergebnis: <b>${correct}</b>`;
+  return Object.assign({label:'Vereinfache:',q},makeMC(correct,extras,()=>mutH(R)),{sol});
+}
+
+/* ================= 3. Klammern auflösen ================= */
+function gKla(L){let e;do{e=gKla0(L);}while(e.shown==='0');return e;}
+function gKla0(L){
+  const V=pick(['x','x','a','y']);
+  const t=pick(L===1?['dist','dist','distneg','minus','xdist']:['dist','distneg','minus','prod','prod','prod','sum2']);
+  const distSol=(a,B,res)=>`Jeden Summanden in der Klammer mit ${wN(mH(a))} multiplizieren:<br>${itemsOf(B).map(i=>`${wN(mH(a))}${DOT}${wN(seqH([i]))}`).join(' + ')} = <b>${pH(res)}</b>`;
+  const wrong=(a,B)=>{ // zweiten Summanden nicht multipliziert, Vorzeichen falsch
+    const it=itemsOf(B);const first={[it[0].k]:it[0].c};
+    const rest=it.slice(1).reduce((s,i)=>padd(s,{[i.k]:i.c}),{});
+    return [pH(padd(pmul(a,first),rest)),pH(padd(pmul(a,first),pneg(pmul(a,rest))))];
+  };
+  if(t==='dist'||t==='distneg'||t==='xdist'){
+    let a;
+    if(t==='dist')a=mono(rnd(2,9));
+    else if(t==='distneg')a=mono(-rnd(2,9));
+    else a=mono(L===1?pick([1,1,2,3]):pick([2,3,-2,-1]),{[V]:1});
+    const B=t==='xdist'?lin(pick([1,1,2,3]),nz(-9,9),V):lin(rnd(1,6)*(Math.random()<.35?-1:1),nz(-9,9),V);
+    const res=pmul(a,B);const correct=pH(res);
+    const q=`${mH(a)}(${pH(B)})`;
+    return Object.assign({label:'Löse die Klammer auf:',q},makeMC(correct,wrong(a,B),()=>mutH(res)),{sol:distSol(a,B,res)});
+  }
+  if(t==='minus'){
+    const A=L===1?mono(rnd(3,9),{[V]:1}):lin(rnd(1,6),nz(-9,9),V);
+    const B=lin(nz(L===1?-1:-6,6)*1,nz(-9,9),V);
+    const res=psub(A,B);
+    const correct=pH(res);
+    const it=itemsOf(B);const first={[it[0].k]:it[0].c};
+    const extras=[pH(padd(psub(A,first),psub(B,first))),pH(padd(A,B))];
+    const q=`${pH(A)} ${M} (${pH(B)})`;
+    const sol=`Steht ein <b>Minus</b> vor der Klammer, drehen sich alle Vorzeichen in der Klammer um:<br>${seqH([...itemsOf(A),...itemsOf(pneg(B))])} = <b>${correct}</b>`;
+    return Object.assign({label:'Löse die Klammer auf und fasse zusammen:',q},makeMC(correct,extras,()=>mutH(res)),{sol});
+  }
+  if(t==='prod'){
+    let P,Q;
+    do{
+      P=lin(pick([1,1,1,2,3]),nz(-8,8),V);Q=lin(pick([1,1,2,3]),nz(-8,8),V);
+      const [a,b,c,d]=[P[V+'1'],P[''],Q[V+'1'],Q['']];
+      var bad=(a===c&&Math.abs(b)===Math.abs(d))||(a===-c&&Math.abs(b)===Math.abs(d));
+    }while(bad);
+    const res=pmul(P,Q);const correct=pH(res);
+    const p1={[V+'1']:P[V+'1']},p2={'':P['']},q1={[V+'1']:Q[V+'1']},q2={'':Q['']};
+    const mid=padd(pmul(p1,q2),pmul(p2,q1));
+    const extras=[pH(padd(pmul(p1,q1),pmul(p2,q2))),pH(padd(padd(pmul(p1,q1),mid),pneg(pmul(p2,q2)))),pH(padd(pmul(p1,q1),mid))];
+    const prods=[pmul(p1,q1),pmul(p1,q2),pmul(p2,q1),pmul(p2,q2)];
+    const q=`(${pH(P)})(${pH(Q)})`;
+    const sol=`Jeder Summand der ersten Klammer wird mit jedem Summanden der zweiten multipliziert:<br>${seqH(prods.flatMap(itemsOf))}<br>Zusammenfassen: <b>${correct}</b>`;
+    return Object.assign({label:'Multipliziere aus und fasse zusammen:',q},makeMC(correct,extras,()=>mutH(res)),{sol});
+  }
+  // sum2
+  const a=rnd(2,6),c=rnd(2,6),P=lin(1,nz(-8,8),V),Q=lin(pick([1,2]),nz(-8,8),V);
+  const plus=Math.random()<.5,sec=plus?c:-c;
+  const res=padd(pscale(P,a),pscale(Q,sec));const correct=pH(res);
+  const Q1={[V+'1']:Q[V+'1']},Q2={'':Q['']};
+  const extras=[pH(padd(pscale(P,a),pscale(Q,-sec))),pH(padd(pscale(P,a),padd(pscale(Q1,sec),pscale(Q2,Math.abs(sec)))))];
+  const q=`${a}(${pH(P)}) ${plus?'+':M} ${c}(${pH(Q)})`;
+  const sol=`Erst jede Klammer auflösen${plus?'':' (Minus vor der zweiten: alle Vorzeichen umdrehen)'}:<br>${seqH([...itemsOf(pscale(P,a)),...itemsOf(pscale(Q,sec))])}<br>Zusammenfassen: <b>${correct}</b>`;
+  return Object.assign({label:'Löse die Klammern auf und fasse zusammen:',q},makeMC(correct,extras,()=>mutH(res)),{sol});
+}
+
+/* ================= 4. Binomische Formeln erkennen/anwenden ================= */
+const BIN_OPTS=[`1. Formel: (a+b)${SUP2}`,`2. Formel: (a${M}b)${SUP2}`,`3. Formel: (a+b)(a${M}b)`,'Keine binomische Formel'];
+const quad=(V,c2,c1,c0)=>padd(padd(mono(c2,{[V]:2}),mono(c1,{[V]:1})),mono(c0));
+function gBin(L){
+  const V=pick(['x','x','x','a','y','z']);
+  const c=L===1?1:pick([1,2,2,3,4,5]);
+  const b=rnd(1,9);
+  const A=s=>pH(lin(c,s*b,V));
+  const t=pick(['B1','B1','B2','B2','B3']);
+  if(t==='B1'){
+    const kind=pick([0,1,2,3,3]);
+    let q,sol;
+    if(kind===0){
+      q=pick([`(${A(1)})(${A(1)})`,`(${A(1)})${SUP2}`]);
+      sol=`Zwei <b>gleiche</b> Klammern mit Plus: 1. binomische Formel.<br>(${A(1)})${SUP2} = <b>${pH(pmul(lin(c,b,V),lin(c,b,V)))}</b>`;
+    }else if(kind===1){
+      q=pick([`(${A(-1)})(${A(-1)})`,`(${A(-1)})${SUP2}`]);
+      sol=`Zwei <b>gleiche</b> Klammern mit Minus: 2. binomische Formel.<br>(${A(-1)})${SUP2} = <b>${pH(pmul(lin(c,-b,V),lin(c,-b,V)))}</b>`;
+    }else if(kind===2){
+      const flip=seqH([{c:b,k:''},{c:c,k:V+'1'}]),flip2=seqH([{c:b,k:''},{c:-c,k:V+'1'}]);
+      q=pick([`(${A(1)})(${A(-1)})`,`(${A(-1)})(${A(1)})`,`(${flip})(${flip2})`]);
+      sol=`Gleiche Zahlen, einmal <b>Plus</b> und einmal <b>Minus</b> dazwischen: 3. binomische Formel.<br>Ergebnis: <b>${pH(pmul(lin(c,b,V),lin(c,-b,V)))}</b> (der mittlere Term fällt weg).`;
+    }else{
+      const d=pick([1,2,3,4,5,6,7,8,9].filter(x=>x!==b)),dd=pick([2,3,4,5,6].filter(x=>x!==c));
+      const v=rnd(1,4);let P,Q;
+      if(v===1){P=lin(c,b,V);Q=lin(c,d,V);}
+      else if(v===2){P=lin(c,-b,V);Q=lin(c,-d,V);}
+      else if(v===3){P=lin(c,b,V);Q=lin(c,-d,V);}
+      else{P=lin(c,b,V);Q=lin(dd,-b,V);}
+      q=`(${pH(P)})(${pH(Q)})`;
+      sol=`Die Klammern passen zu keinem Muster (weder gleich noch &bdquo;Plus/Minus&ldquo; mit denselben Zahlen). Hier hilft nur Ausmultiplizieren:<br>${q} = <b>${pH(pmul(P,Q))}</b>`;
+    }
+    return Object.assign({label:'Welche Formel passt zum Ausmultiplizieren?',q},makeMC(BIN_OPTS[kind],[],()=>null,BIN_OPTS),{ans:kind,sol});
+  }
+  if(t==='B2'){
+    const kind=pick([0,1,2,3,3]);
+    const sq=c*c,mid=2*c*b;
+    let p,sol;
+    if(kind===0){p=quad(V,sq,mid,b*b);sol=`${bodyH(V+'2')}-Term: ${sq>1?sq+V+SUP2:V+SUP2} = (${cH(c,V+'1')})${SUP2}, Zahl: ${b*b} = ${b}${SUP2}, Mitte: 2${DOT}${cH(c,V+'1')}${DOT}${b} = ${mid}${V} ✓ und alle drei Vorzeichen <b>Plus</b> → 1. Formel: (${A(1)})${SUP2}`;}
+    else if(kind===1){p=quad(V,sq,-mid,b*b);sol=`Quadrat + Quadrat, Mitte = ${M}2${DOT}${cH(c,V+'1')}${DOT}${b} = ${M}${mid}${V} ✓ → 2. Formel: (${A(-1)})${SUP2}`;}
+    else if(kind===2){p=quad(V,sq,0,-b*b);sol=`Quadrat <b>minus</b> Quadrat, kein mittlerer Term: (${cH(c,V+'1')})${SUP2} ${M} ${b}${SUP2} → 3. Formel: (${A(1)})(${A(-1)})`;}
+    else{
+      const v=rnd(1,5);let reason;
+      if(v===1){const m2=mid+pick([-2,-1,1,2,3]);p=quad(V,sq,m2,b*b);reason=`Der mittlere Term müsste ${mid}${V} sein (2${DOT}${cH(c,V+'1')}${DOT}${b}), ist aber ${nstr(m2)}${V}.`;}
+      else if(v===2){p=quad(V,sq,mid,-b*b);reason=`Die hintere Zahl ist negativ, ein Quadrat kann nicht negativ sein (bei 1./2. Formel müsste +${b*b} stehen).`;}
+      else if(v===3){p=quad(V,sq,0,b*b);reason=`Quadrat <b>plus</b> Quadrat: eine Summe von Quadraten lässt sich nicht mit einer binomischen Formel zerlegen.`;}
+      else if(v===4){const n=pick([2,3,5,6,7,8,10,12,15]);p=quad(V,sq,0,-n);reason=`${n} ist keine Quadratzahl.`;}
+      else{const nc=pick([2,3,5,6,7]);p=quad(V,nc,6,9);reason=`${nc}${V}${SUP2} ist kein Quadrat eines Terms mit ganzer Zahl.`;}
+      sol=`${reason} → <b>keine</b> binomische Formel.`;
+    }
+    return Object.assign({label:'Welche Formel passt zum Faktorisieren?',q:pH(p),},makeMC(BIN_OPTS[kind],[],()=>null,BIN_OPTS),{ans:kind,sol});
+  }
+  // B3 anwenden
+  const kind=pick([0,1,2]);
+  const sq=c*c,mid=2*c*b;
+  let P,res,extras;
+  if(kind===0){P=`(${A(1)})${SUP2}`;res=quad(V,sq,mid,b*b);extras=[quad(V,sq,0,b*b),quad(V,sq,mid/2,b*b),quad(V,sq,-mid,b*b),quad(V,sq,mid,-b*b)];}
+  else if(kind===1){P=`(${A(-1)})${SUP2}`;res=quad(V,sq,-mid,b*b);extras=[quad(V,sq,0,b*b),quad(V,sq,-mid/2,b*b),quad(V,sq,mid,b*b),quad(V,sq,-mid,-b*b)];}
+  else{P=`(${A(1)})(${A(-1)})`;res=quad(V,sq,0,-b*b);extras=[quad(V,sq,0,b*b),quad(V,sq,-mid,b*b),quad(V,sq,mid,b*b),quad(V,c,0,-b*b)];}
+  const correct=pH(res);
+  const names=['1. Formel: (a+b)² = a² + 2ab + b²','2. Formel: (a−b)² = a² − 2ab + b²','3. Formel: (a+b)(a−b) = a² − b²'];
+  const sol=`${names[kind].replace(/²/g,SUP2)}<br>Hier ist a = ${cH(c,V+'1')} und b = ${b}:<br>${P} = <b>${correct}</b>`;
+  return Object.assign({label:'Multipliziere mit der binomischen Formel aus:',q:P},makeMC(correct,extras.map(pH),()=>mutH(res)),{sol});
+}
+
+/* ================= 5. Ausklammern / Faktorisieren ================= */
+function gFak(L){
+  const V=pick(['x','x','x','a','y','n']);
+  if(Math.random()<(L===1?.55:.4)){
+    // Ausklammern
+    let m,q;
+    const t=L===1?pick(['num','num','var','varnum']):pick(['varnum','varnum','neg','two','var']);
+    const coprime=(c,d)=>gcd(c,d)===1;
+    if(t==='num'){m=mono(rnd(2,9));do{q=lin(rnd(1,7),nz(-9,9),V);}while(!coprime(q[V+'1'],q['']));}
+    else if(t==='var'){m=mono(1,{[V]:1});q=lin(pick([1,1,1,2,3]),nz(-9,9),V);if(t==='var'&&Math.random()<.5)q=lin(1,nz(-9,9),V);m=mono(1,{[V]:1});q=padd(mono(1,{[V]:1}),mono(nz(-9,9)));}
+    else if(t==='varnum'){m=mono(rnd(2,6),{[V]:1});do{q=lin(rnd(1,6),nz(-9,9),V);}while(!coprime(q[V+'1'],q['']));}
+    else if(t==='neg'){m=mono(-rnd(1,6),{[V]:1});if(Math.random()<.4)m=mono(-rnd(2,8));do{q=lin(rnd(1,6),nz(-9,9),V);}while(!coprime(q[V+'1'],q['']));}
+    else{m=mono(rnd(2,6),{a:1});do{q=padd(mono(rnd(1,5),{b:1}),mono(nz(-9,9)));}while(!coprime(q['b1'],q['']));}
+    const p=pmul(m,q);
+    const mS=m2=>mH(m2);
+    const correct=`${mS(m)}(${pH(q)})`;
+    // teilweise ausgeklammert
+    const km=keyOf(m),cm=m[km],em=pk(km);const cand=[];
+    divisors(Math.abs(cm)).forEach(d=>{if(d!==Math.abs(cm))cand.push(mono(Math.sign(cm)*d,em));});
+    Object.keys(em).forEach(v=>{const e2={...em};e2[v]--;cand.push(mono(cm,e2));});
+    if(Math.abs(cm)>1&&Object.keys(em).length)cand.push(mono(Math.sign(cm),em));
+    const partial=cand.filter(mm=>keyOf(mm)!==undefined&&!(keyOf(mm)===''&&Math.abs(mm[''])===1)&&mH(mm)!==mH(m)&&pdivMono(p,mm)).map(mm=>`${mH(mm)}(${pH(pdivMono(p,mm))})`);
+    const extras=[...shuffle(partial).slice(0,2)];
+    const gen=()=>`${mS(m)}(${mutH(q)})`;
+    const g=Math.abs(cm);
+    const sol=`Gemeinsamer Teiler suchen: ${g>1?`Zahlen: ggT = ${g}`:''}${g>1&&Object.keys(em).length?', ':''}${Object.keys(em).length?`gemeinsame Variable: ${bodyH(km)}`:''}${cm<0?', Vorzeichen: Minus wird mit ausgeklammert':''}.<br>Jeden Summanden durch ${wN(mS(m))} teilen: ${pH(p)} = <b>${correct}</b><br>Probe: Beim Ausmultiplizieren muss wieder ${pH(p)} herauskommen.`;
+    return Object.assign({label:'Klammere so weit wie möglich aus:',q:pH(p)},makeMC(correct,extras,gen),{sol});
+  }
+  // Faktorisieren mit binomischer Formel
+  const c=L===1?1:pick([1,2,2,3,4,5]),b=rnd(1,L===1?12:9);
+  const k=L===2&&Math.random()<.45?pick([2,3,4,5]):1;
+  const kind=pick([0,1,2]);
+  const kp=k>1?String(k):'';
+  const Ls=s=>pH(lin(c,s*b,V));
+  let base,correct,extras;
+  if(kind===0){base=quad(V,c*c,2*c*b,b*b);correct=`${kp}(${Ls(1)})${SUP2}`;
+    extras=[`${kp}(${Ls(-1)})${SUP2}`,`${kp}(${Ls(1)})(${Ls(-1)})`,`${kp}(${pH(lin(c,2*b,V))})${SUP2}`,k>1?`(${Ls(1)})${SUP2}`:`(${pH(lin(c*c,b,V))})${SUP2}`];}
+  else if(kind===1){base=quad(V,c*c,-2*c*b,b*b);correct=`${kp}(${Ls(-1)})${SUP2}`;
+    extras=[`${kp}(${Ls(1)})${SUP2}`,`${kp}(${Ls(1)})(${Ls(-1)})`,`${kp}(${pH(lin(c,-2*b,V))})${SUP2}`,k>1?`(${Ls(-1)})${SUP2}`:`(${pH(lin(c*c,-b,V))})${SUP2}`];}
+  else{base=quad(V,c*c,0,-b*b);correct=`${kp}(${Ls(1)})(${Ls(-1)})`;
+    extras=[`${kp}(${Ls(-1)})${SUP2}`,`${kp}(${Ls(1)})${SUP2}`,`${kp}(${pH(lin(c,b*b,V))})(${pH(lin(c,-b*b,V))})`,k>1?`(${Ls(1)})(${Ls(-1)})`:`(${pH(lin(c*c,b,V))})(${pH(lin(c*c,-b,V))})`];}
+  const p=pscale(base,k);
+  const gen=()=>{const bb=b+pick([1,2,3,-1]);return kind===2?`${kp}(${pH(lin(c,bb,V))})(${pH(lin(c,-bb,V))})`:`${kp}(${pH(lin(c,(kind===0?1:-1)*bb,V))})${SUP2}`;};
+  const names=['1. Formel: a² + 2ab + b² = (a+b)²','2. Formel: a² − 2ab + b² = (a−b)²','3. Formel: a² − b² = (a+b)(a−b)'];
+  const sol=(k>1?`Zuerst den gemeinsamen Faktor <b>${k}</b> ausklammern: ${pH(p)} = ${k}(${pH(base)}).<br>`:'')+
+    `Dann erkennen: ${names[kind].replace(/²/g,SUP2)} mit a = ${cH(c,V+'1')}, b = ${b}.<br>Ergebnis: <b>${correct}</b><br>Probe: Wieder ausmultiplizieren!`;
+  return Object.assign({label:'Faktorisiere (so weit wie möglich):',q:pH(p)},makeMC(correct,extras,gen),{sol});
+}
+
+/* ================= 6. Negative Zahlen ================= */
+function gNeg(L){
+  const t=pick(L===1?['add','sub','sub','mul','div','add','mul']:['chain','chain','prod','bracket','mixdiv','mul3','dot']);
+  let q,v,sol;
+  const res=()=>`<b>${nstr(v)}</b>`;
+  if(t==='add'){
+    let a,b;do{a=nz(-15,15);b=nz(-15,15);}while(a>0&&b>0);
+    q=`${nstr(a)} + ${pn(b)}`;v=a+b;
+    sol=(a<0&&b<0)?`Beide negativ: Beträge addieren (${Math.abs(a)} + ${Math.abs(b)} = ${Math.abs(a)+Math.abs(b)}), das Ergebnis bleibt negativ → ${res()}`
+      :`Verschiedene Vorzeichen: Beträge subtrahieren (${Math.max(Math.abs(a),Math.abs(b))} ${M} ${Math.min(Math.abs(a),Math.abs(b))} = ${Math.abs(v)}). Die Zahl mit dem größeren Betrag bestimmt das Vorzeichen → ${res()}`;
+  }else if(t==='sub'){
+    let a,b;do{a=nz(-15,15);b=nz(-15,15);}while(a>0&&b>0);
+    q=`${nstr(a)} ${M} ${pn(b)}`;v=a-b;
+    sol=`Subtrahieren = die Gegenzahl addieren: ${nstr(a)} ${M} ${pn(b)} = ${nstr(a)} + ${pn(-b)}${b<0?` (Minus mal Minus wird Plus)`:''} = ${res()}`;
+  }else if(t==='mul'){
+    let a,b;do{a=nz(-9,9);b=nz(-9,9);}while(Math.abs(a)<2||Math.abs(b)<2||(a>0&&b>0));
+    q=`${pn(a)}${NB}${DOT}${NB}${pn(b)}`;v=a*b;
+    sol=`Beträge multiplizieren: ${Math.abs(a)}${DOT}${Math.abs(b)} = ${Math.abs(v)}. ${a*b>0?'Gleiche Vorzeichen → Ergebnis positiv':'Verschiedene Vorzeichen → Ergebnis negativ'} → ${res()}`;
+  }else if(t==='div'){
+    let r,b;do{r=nz(-12,12);b=nz(-9,9);}while(Math.abs(b)<2||(r>0&&b>0));
+    const a=r*b;q=`${pn(a)}${NB}:${NB}${pn(b)}`;v=r;
+    sol=`Beträge dividieren: ${Math.abs(a)} : ${Math.abs(b)} = ${Math.abs(r)}. ${r>0?'Gleiche Vorzeichen → positiv':'Verschiedene Vorzeichen → negativ'} → ${res()}`;
+  }else if(t==='chain'){
+    const a=nz(-12,12),b=nz(-12,12),c=nz(-12,12),o1=pick(['+',M]),o2=pick(['+',M]);
+    q=`${nstr(a)} ${o1} ${pn(b)} ${o2} ${pn(c)}`;
+    const s1=o1==='+'?b:-b,s2=o2==='+'?c:-c;v=a+s1+s2;
+    const norm=`${nstr(a)} ${s1<0?M:'+'} ${Math.abs(s1)} ${s2<0?M:'+'} ${Math.abs(s2)}`;
+    sol=`Klammern und Doppelvorzeichen auflösen (Minus vor einer negativen Zahl wird Plus): ${norm}<br>Von links nach rechts rechnen: ${nstr(a+s1)} ${s2<0?M:'+'} ${Math.abs(s2)} = ${res()}`;
+  }else if(t==='prod'){
+    const a=nz(-9,9),b=rnd(2,9),c=nz(-9,-2),o=pick(['+',M]);
+    q=`${nstr(a)} ${o} ${b}${NB}${DOT}${NB}${pn(c)}`;const pr=b*c;v=o==='+'?a+pr:a-pr;
+    sol=`<b>Punkt vor Strich:</b> zuerst ${b}${DOT}${pn(c)} = ${nstr(pr)}. Dann: ${nstr(a)} ${o} ${pn(pr)} = ${res()}`;
+  }else if(t==='dot'){
+    const a=nz(-9,9),b=nz(-9,9),c=nz(-6,6),o=pick(['+',M]);
+    q=`(${nstr(a)} ${o} ${pn(b)})${NB}${DOT}${NB}${pn(c)}`;const inner=o==='+'?a+b:a-b;v=inner*c;
+    sol=`Zuerst die Klammer: ${nstr(a)} ${o} ${pn(b)} = ${nstr(inner)}. Dann: ${pn(inner)}${DOT}${pn(c)} = ${res()}`;
+  }else if(t==='bracket'){
+    const a=nz(-9,9),b=nz(-9,9),c=nz(-9,9),o=pick(['+',M]);
+    q=`${nstr(a)} ${M} (${nstr(b)} ${o} ${pn(c)})`;const inner=o==='+'?b+c:b-c;v=a-inner;
+    sol=`Zuerst die Klammer: ${nstr(b)} ${o} ${pn(c)} = ${nstr(inner)}. Dann: ${nstr(a)} ${M} ${pn(inner)} = ${res()}`;
+  }else if(t==='mixdiv'){
+    let r,b;do{r=nz(-9,9);b=nz(-6,6);}while(Math.abs(b)<2||(r>0&&b>0));
+    const a=r*b,c=rnd(1,9),o=pick(['+',M]);
+    q=`${pn(a)}${NB}:${NB}${pn(b)} ${o} ${c}`;v=o==='+'?r+c:r-c;
+    sol=`Punkt vor Strich: ${pn(a)} : ${pn(b)} = ${nstr(r)}. Dann: ${nstr(r)} ${o} ${c} = ${res()}`;
+  }else{
+    let a,b,c;do{a=nz(-5,5);b=nz(-5,5);c=nz(-5,5);}while([a,b,c].some(x=>Math.abs(x)<2)||(a>0&&b>0&&c>0));
+    q=`${pn(a)}${NB}${DOT}${NB}${pn(b)}${NB}${DOT}${NB}${pn(c)}`;v=a*b*c;
+    const neg=[a,b,c].filter(x=>x<0).length;
+    sol=`${neg} negative${neg===1?'r':''} Faktor${neg===1?'':'en'}: ${neg%2?'ungerade Anzahl → Ergebnis negativ':'gerade Anzahl → Ergebnis positiv'}. Betrag: ${Math.abs(a)}${DOT}${Math.abs(b)}${DOT}${Math.abs(c)} = ${Math.abs(v)} → ${res()}`;
+  }
+  return {kind:'num',label:'Berechne:',q,acc:[F(v)],dec:false,shown:nstr(v),sol,int:true};
+}
+
+/* ================= 7. Brüche ================= */
+function gBru(L){
+  const dens=L===1?[2,3,4,5,6,8,10]:[2,3,4,5,6,7,8,9,10,12];
+  const rf=()=>{let d=pick(dens),n;do{n=L===1?rnd(1,d-1):rnd(1,d+4);}while(gcd(n,d)!==1);return {n:L===1?n:n*(Math.random()<.3?-1:1),d};};
+  const op=pick(L===1?['+','−','·',':']:['+','−','·',':','+','·',':']);
+  let A=rf(),B=rf();
+  if(L===2){const r=Math.random();if(r<.2)A={n:rnd(1,6)*pick([1,-1]),d:1};else if(r<.35)B={n:rnd(2,6)*pick([1,1,-1]),d:1};}
+  if(op==='−'&&L===1&&A.n/A.d<B.n/B.d){const t=A;A=B;B=t;}
+  if(op===':'&&B.n===0)B.n=1;
+  const FA=F(A.n,A.d),FB=F(B.n,B.d);
+  let v,sol;
+  const red=(n,d)=>{const g=gcd(n,d);return g>1?` = ${fU(n/g,d/g)}`:'';};
+  const first=fU(A.n,A.d),second=wU(B.n,B.d);
+  const q=`${first}${NB}${op==='−'?M:op==='·'?DOT:op}${NB}${second}`;
+  if(op==='+'||op==='−'){
+    v=op==='+'?fadd(FA,FB):fsub(FA,FB);
+    const h=lcm(A.d,B.d),a2=A.n*(h/A.d),b2=B.n*(h/B.d),nu=op==='+'?a2+b2:a2-b2;
+    sol=`Hauptnenner bilden: ${h}<br>Erweitern: ${fU(a2,h)} ${op} ${wU(b2,h)} = ${fU(nu,h)}${red(nu,h)}<br>Ergebnis: <b>${fH(v)}</b>`;
+  }else if(op==='·'){
+    v=fmul(FA,FB);
+    const nu=A.n*B.n,de=A.d*B.d;
+    sol=`Zähler mal Zähler, Nenner mal Nenner (am besten vorher kürzen): ${fracH(nstr(A.n)+DOT+pn(B.n),A.d+DOT+B.d)} = ${fU(nu,de)}${red(nu,de)}<br>Ergebnis: <b>${fH(v)}</b>`;
+  }else{
+    v=fdiv(FA,FB);
+    const inv=B.n<0?[-B.d,-B.n]:[B.d,B.n];
+    const nu=A.n*inv[0],de=A.d*inv[1];
+    sol=`Durch einen Bruch teilen = mit dem <b>Kehrwert</b> multiplizieren:<br>${first} ${DOT} ${wU(inv[0],inv[1])} = ${fU(nu,de)}${red(nu,de)}<br>Ergebnis: <b>${fH(v)}</b>`;
+  }
+  return {kind:'num',label:'Berechne und kürze vollständig:',q,acc:[v],dec:false,shown:fH(v),sol,frac:true};
+}
+
+/* ================= Stationen ================= */
+const STATIONS=[
+  {id:'pot',ic:'(&minus;3)&sup2;',nm:'Potenzen',ds:'Quadrate und Hochzahlen von Zahlen, negativen Zahlen, Brüchen und Dezimalzahlen &ndash; mit versteckten Quadratzahlen.',gen:gPot},
+  {id:'zus',ic:'3x + 5x',nm:'Terme zusammenfassen',ds:'Addieren und Subtrahieren gleichartiger Terme, Multiplizieren und Dividieren von Termen.',gen:gZus},
+  {id:'kla',ic:'2(x + 3)',nm:'Klammern auflösen',ds:'Ausmultiplizieren, Minus vor der Klammer, Klammer mal Klammer &ndash; ohne binomische Formeln.',gen:gKla},
+  {id:'bin',ic:'(a + b)&sup2;',nm:'Binomische Formeln',ds:'Erkennen, ob eine binomische Formel passt (und welche) &ndash; und sie anwenden.',gen:gBin},
+  {id:'fak',ic:'6x + 9 = 3(…)',nm:'Ausklammern &amp; Faktorisieren',ds:'Gemeinsamen Faktor ausklammern und mit der binomischen Formel faktorisieren.',gen:gFak},
+  {id:'neg',ic:'&minus;4 &minus; (&minus;7)',nm:'Negative Zahlen',ds:'Addieren, Subtrahieren, Multiplizieren und Dividieren mit Vorzeichen &ndash; auch mit Klammern.',gen:gNeg},
+  {id:'bru',ic:'<span class="frac"><span class="n">2</span><span class="d">3</span></span> + <span class="frac"><span class="n">1</span><span class="d">4</span></span>',nm:'Brüche',ds:'Addieren, Subtrahieren, Multiplizieren und Dividieren von Brüchen.',gen:gBru}
+];
+const MIX={id:'mix',ic:'Mix',nm:'Gemischte Runde',ds:'Aufgaben aus allen sieben Stationen &ndash; der Fitness-Check vor den Gleichungen.'};
+
+/* ================= Antwort prüfen ================= */
+function parseNum(s){
+  s=s.trim().replace(/[−–—]/g,'-').replace(/\s+/g,'');
+  let m;
+  if((m=s.match(/^(-?)(\d+)\/(\d+)$/))){if(+m[3]===0)return null;return {f:F((m[1]?-1:1)*+m[2],+m[3]),raw:{n:+m[2],d:+m[3]}};}
+  if((m=s.match(/^(-?)(\d+)(?:[.,](\d+))?$/))){const fr=m[3]||'';return {f:F((m[1]?-1:1)*(+(m[2]+fr)),Math.pow(10,fr.length))};}
+  return null;
+}
+
+/* ================= Spielzustand ================= */
+const ROUND=10;
+let S={lvl:1,view:'menu',st:null,list:[],i:0,score:0,streak:0,right:0,wrong:[],answered:false,res:null,retry:false,msg:''};
+let store={lvl:1,best:{}};
+try{const j=JSON.parse(localStorage.getItem('gleichungsfitness.v1')||'null');if(j)store=Object.assign(store,j);}catch(e){}
+S.lvl=store.lvl||1;
+const save=()=>{try{localStorage.setItem('gleichungsfitness.v1',JSON.stringify(store));}catch(e){}};
+
+function makeRound(id,lvl){
+  const out=[],seen=new Set();let guard=0;
+  while(out.length<ROUND&&guard++<200){
+    const st=id==='mix'?STATIONS[out.length%STATIONS.length]:STATIONS.find(s=>s.id===id);
+    const ex=st.gen(lvl);ex.st=st.id;
+    if(seen.has(ex.q))continue;
+    seen.add(ex.q);out.push(ex);
+  }
+  return id==='mix'?shuffle(out):out;
+}
+
+function start(id,list,retry){
+  S.st=id;S.list=list||makeRound(id,S.lvl);S.i=0;S.score=0;S.streak=0;S.right=0;S.wrong=[];S.answered=false;S.res=null;S.retry=!!retry;S.view='play';S.msg='';
+  render();
+}
+
+function answer(val){
+  const ex=S.list[S.i];if(S.answered)return;
+  let ok,userHtml,hint='';
+  if(ex.kind==='mc'){ok=val===ex.ans;userHtml=ex.opts[val];S.res={idx:val};}
+  else{
+    const p=parseNum(val);
+    if(!p){S.msg='Bitte eine Zahl eingeben, z. B. &minus;3/4, 5 oder 0,25.';render();return;}
+    if(ex.int&&p.raw){S.msg='Hier ist eine ganze Zahl gesucht.';render();return;}
+    ok=ex.acc.some(a=>feq(a,p.f));
+    if(ok&&p.raw&&gcd(p.raw.n,p.raw.d)>1&&ex.frac){hint=' Tipp: Du kannst noch kürzen &ndash; ('+ex.shown+')';}
+    if(ok&&ex.frac===undefined&&p.raw&&!ex.dec&&gcd(p.raw.n,p.raw.d)>1)hint='';
+    userHtml=esc(val.trim());S.res={ok,raw:val};
+  }
+  S.answered=true;S.res.ok=ok;S.res.hint=hint;S.msg='';
+  if(ok){S.streak++;S.right++;const pts=10+Math.min(S.streak-1,5)*2;S.res.pts=pts;S.score+=pts;}
+  else{S.streak=0;S.wrong.push({ex,user:userHtml});}
+  render();
+}
+
+function next(){
+  if(!S.answered)return;
+  S.i++;S.answered=false;S.res=null;S.msg='';
+  if(S.i>=S.list.length){
+    if(!S.retry){const k=S.st+'-'+S.lvl;store.best[k]=Math.max(store.best[k]||0,S.right);save();}
+    S.view='result';
+  }
+  render();
+}
+
+/* ================= Rendering ================= */
+const app=document.getElementById('app');
+const stName=id=>id==='mix'?MIX.nm:STATIONS.find(s=>s.id===id).nm;
+const starsFor=n=>n>=9?3:n>=7?2:n>=5?1:0;
+const starStr=n=>'★'.repeat(n)+'☆'.repeat(3-n);
+
+function render(){
+  if(S.view==='menu')return viewMenu();
+  if(S.view==='play')return viewPlay();
+  return viewResult();
+}
+
+function viewMenu(){
+  const card=(s,mix)=>{
+    const b=store.best[s.id+'-'+S.lvl];
+    return `<button class="st${mix?' mix':''}" data-act="start" data-id="${s.id}">
+      <span class="ic">${s.ic}</span><span class="nm">${s.nm}</span><span class="ds">${s.ds}</span>
+      <span class="bs">${b!==undefined?starStr(starsFor(b))+' &nbsp;Bestwert '+b+'/'+ROUND:'noch nicht gespielt'}</span></button>`;
+  };
+  app.innerHTML=`
+    <a class="back" href="index.html">&larr; Zur &Uuml;bersicht</a>
+    <h1>Gleichungs-Fitness</h1>
+    <p class="sub">Bevor man Gleichungen l&ouml;st, muss das Rechnen sitzen: Potenzen, Terme, Klammern, binomische Formeln, Faktorisieren, Vorzeichen und Br&uuml;che. W&auml;hle eine Station &ndash; jede Runde hat ${ROUND} Aufgaben mit Rechenweg zum Nachlesen.</p>
+    <div class="lvl"><span>Niveau:</span>
+      <div class="seg" role="group" aria-label="Niveau">
+        <button data-act="lvl" data-v="1" class="${S.lvl===1?'on':''}">Einstieg</button>
+        <button data-act="lvl" data-v="2" class="${S.lvl===2?'on':''}">Fortgeschritten</button>
+      </div></div>
+    <div class="grid">${card(MIX,true)}${STATIONS.map(s=>card(s)).join('')}</div>`;
+}
+
+function viewPlay(){
+  const ex=S.list[S.i];
+  const pct=Math.round(S.i/S.list.length*100);
+  let body='';
+  if(ex.kind==='mc'){
+    body=`<div class="options">${ex.opts.map((o,i)=>{
+      let cls='opt';if(S.answered){if(i===ex.ans)cls+=' correct';else if(S.res.idx===i)cls+=' wrong';}
+      return `<button class="${cls}" data-act="mc" data-i="${i}" ${S.answered?'disabled':''}><span class="k">${i+1}</span><span>${o}</span></button>`;}).join('')}</div>`;
+  }else{
+    const cls=S.answered?(S.res.ok?'ok':'bad'):'';
+    body=`<div class="inrow"><input id="ans" type="text" class="${cls}" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false"
+      placeholder="${ex.int?'ganze Zahl':ex.dec?'z. B. 0,16':'z. B. −3/4 oder 5'}" value="${S.answered?esc(S.res.raw):''}" ${S.answered?'disabled':''}>
+      ${S.answered?'':'<button class="btn" data-act="check">Prüfen</button>'}</div>
+      ${S.answered?'':`<div class="keys"><button data-act="ins" data-v="−" aria-label="Minus">−</button>${ex.int?'':'<button data-act="ins" data-v="/" aria-label="Bruchstrich">/</button><button data-act="ins" data-v="," aria-label="Komma">,</button>'}</div>`}
+      <div class="tiny ${S.msg?'err':''}">${S.msg||(ex.int?'':'Brüche als 3/4 eingeben, Dezimalzahlen mit Komma.')}</div>`;
+  }
+  let fb='';
+  if(S.answered){
+    const ok=S.res.ok;
+    fb=`<div class="fb ${ok?'ok':'bad'}"><div class="hd">${ok?'✓ Richtig!':'✗ Leider nicht richtig.'}${ok?`<span class="pts">+${S.res.pts} Punkte</span>`:` Richtig wäre: ${ex.shown}`}${S.res.hint||''}</div>
+      <div class="sol">${ex.sol}</div></div>
+      <div class="btnrow"><button class="btn" data-act="next">${S.i+1>=S.list.length?'Zum Ergebnis':'Weiter'} &rarr;</button></div>`;
+  }
+  app.innerHTML=`
+    <button class="back" data-act="menu">&larr; Zur Stationsauswahl</button>
+    <div class="hud"><span class="nm">${stName(S.st)}${S.retry?' &ndash; Fehler wiederholen':''}</span>
+      <span class="stats"><span>Aufgabe ${S.i+1} / ${S.list.length}</span><span class="score">${S.score} Pkt.</span><span class="streak">${S.streak>1?'🔥 '+S.streak+' in Folge':''}</span></span></div>
+    <div class="prog"><div style="width:${pct}%"></div></div>
+    <div class="qwrap"><div class="qlabel">${ex.label}</div><div class="expr">${ex.q}</div></div>
+    ${body}${fb}`;
+  if(!S.answered&&ex.kind==='num'){const i=document.getElementById('ans');if(i)i.focus();}
+}
+
+function viewResult(){
+  const n=S.right,tot=S.list.length,st=starsFor(Math.round(n/tot*10));
+  const msgs=['Noch etwas Übung, dann sitzt es!','Guter Anfang – schau dir die Rechenwege an.','Stark! Fast alles richtig.','Perfekt – bereit für Gleichungen!'];
+  app.innerHTML=`<div class="center">
+    <h1>Runde geschafft!</h1>
+    <div class="big">${n} / ${tot}</div>
+    <div class="stars">${starStr(st)}</div>
+    <p class="sub" style="margin:0 auto 6px">${S.score} Punkte &middot; ${msgs[st]}</p></div>
+    ${S.wrong.length?`<div class="wlist"><b>Das solltest du dir noch einmal ansehen:</b>${S.wrong.map(w=>`<div class="witem"><div class="q">${w.ex.q}</div>
+      Deine Antwort: <span class="y">${w.user}</span> &nbsp;&middot;&nbsp; Richtig: <span class="r">${w.ex.shown}</span><br><span style="color:var(--chalk-dim)">${w.ex.sol}</span></div>`).join('')}</div>`:''}
+    <div class="btnrow">
+      ${S.wrong.length?'<button class="btn" data-act="redo">Fehler wiederholen</button>':''}
+      <button class="btn ${S.wrong.length?'ghost':''}" data-act="again">Neue Runde</button>
+      <button class="btn ghost" data-act="menu">Stationen</button>
+    </div>`;
+}
+
+/* ================= Events ================= */
+app.addEventListener('click',e=>{
+  const b=e.target.closest('[data-act]');if(!b)return;
+  const a=b.dataset.act;
+  if(a==='start')start(b.dataset.id);
+  else if(a==='lvl'){S.lvl=+b.dataset.v;store.lvl=S.lvl;save();viewMenu();}
+  else if(a==='menu'){S.view='menu';render();}
+  else if(a==='mc')answer(+b.dataset.i);
+  else if(a==='check'){const i=document.getElementById('ans');answer(i?i.value:'');}
+  else if(a==='ins'){const i=document.getElementById('ans');if(i){i.value+=b.dataset.v;i.focus();}}
+  else if(a==='next')next();
+  else if(a==='again')start(S.st);
+  else if(a==='redo')start(S.st,shuffle(S.wrong.map(w=>w.ex)).map(x=>x),true);
+});
+document.addEventListener('keydown',e=>{
+  if(S.view!=='play'||e.repeat||e.ctrlKey||e.metaKey||e.altKey)return;
+  const ex=S.list[S.i];
+  if(e.key==='Enter'){
+    e.preventDefault();
+    if(S.answered)next();
+    else if(ex.kind==='num'){const i=document.getElementById('ans');answer(i?i.value:'');}
+  }else if(!S.answered&&ex.kind==='mc'&&/^[1-4]$/.test(e.key)&&+e.key<=ex.opts.length){answer(+e.key-1);}
+});
+
+render();
+})();
+</script>
+</body>
+</html>
