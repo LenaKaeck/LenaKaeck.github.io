@@ -384,7 +384,7 @@ function gZus(L){
 function gKla(L){let e;do{e=gKla0(L);}while(e.shown==='0');return e;}
 function gKla0(L){
   const V=pick(['x','x','a','y']);
-  const t=pick(L===1?['dist','dist','distneg','minus','xdist']:['dist','distneg','minus','prod','prod','prod','sum2']);
+  const t=pick(L===1?['dist','distneg','minus','xdist','prod','prod','prod']:['dist','distneg','minus','prod','prod','prod','prod','sum2']);
   const distSol=(a,B,res)=>`Jeden Summanden in der Klammer mit ${wN(mH(a))} multiplizieren:<br>${itemsOf(B).map(i=>`${wN(mH(a))}${DOT}${wN(seqH([i]))}`).join(' + ')} = <b>${pH(res)}</b>`;
   const wrong=(a,B)=>{ // zweiten Summanden nicht multipliziert, Vorzeichen falsch
     const it=itemsOf(B);const first={[it[0].k]:it[0].c};
@@ -413,19 +413,23 @@ function gKla0(L){
     return Object.assign({label:'Löse die Klammer auf und fasse zusammen:',q},makeMC(correct,extras,()=>mutH(res)),{sol});
   }
   if(t==='prod'){
-    let P,Q;
+    const W=pick(['y','z','b'].filter(w=>w!==V));
+    const variant=L===1?pick(['bin','bin','bin','two']):pick(['bin','bin','two','tri','tri']);
+    let P,Q,bad;
     do{
-      P=lin(pick([1,1,1,2,3]),nz(-8,8),V);Q=lin(pick([1,1,2,3]),nz(-8,8),V);
-      const [a,b,c,d]=[P[V+'1'],P[''],Q[V+'1'],Q['']];
-      var bad=(a===c&&Math.abs(b)===Math.abs(d))||(a===-c&&Math.abs(b)===Math.abs(d));
+      if(variant==='two'){P=lin(1,nz(-8,8),V);Q=lin(L===1?1:pick([1,2,3]),nz(-8,8),W);}
+      else if(variant==='tri'){P=lin(1,nz(-6,6),V);Q=quad(V,1,nz(-5,5),nz(-6,6));}
+      else{P=lin(L===1?1:pick([1,1,1,2,3]),nz(L===1?-9:-8,L===1?9:8),V);Q=lin(L===1?1:pick([1,1,2,3]),nz(L===1?-9:-8,L===1?9:8),V);}
+      bad=variant==='bin'&&Math.abs(P['']||0)===Math.abs(Q['']||0)&&Math.abs(P[V+'1'])===Math.abs(Q[V+'1']);
     }while(bad);
     const res=pmul(P,Q);const correct=pH(res);
-    const p1={[V+'1']:P[V+'1']},p2={'':P['']},q1={[V+'1']:Q[V+'1']},q2={'':Q['']};
-    const mid=padd(pmul(p1,q2),pmul(p2,q1));
-    const extras=[pH(padd(pmul(p1,q1),pmul(p2,q2))),pH(padd(padd(pmul(p1,q1),mid),pneg(pmul(p2,q2)))),pH(padd(pmul(p1,q1),mid))];
-    const prods=[pmul(p1,q1),pmul(p1,q2),pmul(p2,q1),pmul(p2,q2)];
+    const Pt=itemsOf(P),Qt=itemsOf(Q);
+    const prods=[];Pt.forEach(a=>Qt.forEach(b=>prods.push(pmul({[a.k]:a.c},{[b.k]:b.c}))));
+    const sumOf=ps=>ps.reduce((s,p)=>padd(s,p),{});
+    const last=prods[prods.length-1];
+    const extras=[pH(sumOf(prods.slice(0,-1))),pH(padd(sumOf(prods.slice(0,-1)),pneg(last))),pH(padd(prods[0],last))];
     const q=`(${pH(P)})(${pH(Q)})`;
-    const sol=`Jeder Summand der ersten Klammer wird mit jedem Summanden der zweiten multipliziert:<br>${seqH(prods.flatMap(itemsOf))}<br>Zusammenfassen: <b>${correct}</b>`;
+    const sol=`Jeder Summand der ersten Klammer wird mit jedem Summanden der zweiten multipliziert (${Pt.length}${DOT}${Qt.length} = ${prods.length} Produkte):<br>${seqH(prods.flatMap(itemsOf))}<br>Zusammenfassen: <b>${correct}</b>`;
     return Object.assign({label:'Multipliziere aus und fasse zusammen:',q},makeMC(correct,extras,()=>mutH(res)),{sol});
   }
   // sum2
