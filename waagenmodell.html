@@ -407,40 +407,18 @@
       </div>
 
       <div class="main">
-        <div class="sidebar" id="solveSidebar" hidden>
-          <p class="sub">Gib eine Gleichung mit x ein, zum Beispiel <b>3x + 5 = x + 11</b>. Sie wird auf die Waage gelegt, und du löst sie Schritt für Schritt: auf beiden Seiten gleich viel wegnehmen, bis x allein steht.</p>
-          <form class="eq-form" id="eqForm" autocomplete="off">
-            <input class="eq-input" id="eqInput" type="text" inputmode="text" spellcheck="false" placeholder="z. B. 3x + 5 = x + 11" aria-label="Gleichung">
-            <button class="btn" type="submit">Auf die Waage legen</button>
-          </form>
-          <p class="err" id="eqError" role="alert" hidden></p>
-          <div class="examples" id="examples"></div>
-          <div class="solve-tools" id="solveTools" hidden>
-            <p class="sub">Klicke ein Plättchen an, um es nur auf einer Seite wegzunehmen – oder nimm auf beiden Seiten gleich viel weg:</p>
-            <div class="pc-buttons both-buttons">
-              <button class="add-btn x" data-both="x" type="button">− x</button>
-              <button class="add-btn w1" data-both="1" type="button">− 1</button>
-              <button class="add-btn w2" data-both="2" type="button">− 2</button>
-              <button class="add-btn w5" data-both="5" type="button">− 5</button>
-              <button class="add-btn w10" data-both="10" type="button">− 10</button>
-            </div>
-            <div class="div-row">
-              <span class="sub">Beide Seiten teilen durch</span>
-              <select class="eq-select" id="divSelect" aria-label="Teiler"></select>
-              <button class="btn small" id="divBtn" type="button">Teilen</button>
-            </div>
-            <div class="step-nav">
-              <button class="btn ghost small" id="undoBtn" type="button">Rückgängig</button>
-              <button class="btn ghost small" id="hintBtn" type="button">Tipp</button>
-              <button class="btn ghost small" id="restartBtn" type="button">Neu starten</button>
-            </div>
-            <p class="reveal" id="hintText" hidden></p>
-          </div>
-          <ol class="log" id="log"></ol>
-        </div>
-
         <div class="sidebar" id="exploreSidebar">
-          <p class="sub">Leg x-Blöcke und Gewichte auf die beiden Waagschalen. Nimmst du nur auf einer Seite etwas herunter, verliert die Waage das Gleichgewicht und kippt &mdash; nur wenn auf beiden Seiten gleich viel wegkommt, bleibt sie in der Balance.</p>
+          <p class="sub" id="subExplore">Leg x-Blöcke und Gewichte auf die beiden Waagschalen. Nimmst du nur auf einer Seite etwas herunter, verliert die Waage das Gleichgewicht und kippt &mdash; nur wenn auf beiden Seiten gleich viel wegkommt, bleibt sie in der Balance.</p>
+
+          <div id="eqBlock" hidden>
+            <p class="sub">Gib eine Gleichung mit x ein, zum Beispiel <b>3x + 5 = x + 11</b>. Sie wird auf die Waage gelegt. Dann nimmst du selbst etwas weg oder legst etwas dazu, um sie zu lösen. Nimmst du nur auf einer Seite etwas weg, kippt die Waage.</p>
+            <form class="eq-form" id="eqForm" autocomplete="off">
+              <input class="eq-input" id="eqInput" type="text" inputmode="text" spellcheck="false" placeholder="z. B. 3x + 5 = x + 11" aria-label="Gleichung">
+              <button class="btn" type="submit">Auf die Waage legen</button>
+            </form>
+            <p class="err" id="eqError" role="alert" hidden></p>
+            <div class="examples" id="examples"></div>
+          </div>
 
           <div class="toolbar">
             <button class="btn" id="newExampleBtn" type="button">Neues Beispiel</button>
@@ -465,7 +443,6 @@
             </div>
           </div>
 
-          <div class="eq-line" id="eqLine" hidden aria-live="polite"></div>
 
           <div class="pan-controls-row" id="panControlsRow">
             <div class="pan-controls">
@@ -522,6 +499,7 @@
   let xWeight = PRESETS[0].xWeight;
   let pans = { left:{}, right:{} };
   let revealed = false;
+  let revealOverride = null;  // Gleichungsmodus: Text für das Gewicht von x ('' = noch keine Gleichung)
 
   function emptyPan(){
     const p = {};
@@ -581,7 +559,8 @@
     draw(pans.left, pans.right, xWeight);
     revealText.hidden = !revealed;
     if(revealed){
-      revealText.textContent = 'Ein x wiegt gerade ' + xWeight + '.';
+      revealText.textContent = revealOverride === '' ? 'Gib zuerst eine Gleichung ein.'
+        : 'Ein x wiegt gerade ' + (revealOverride === null ? xWeight : revealOverride) + '.';
     }
   }
 
@@ -615,7 +594,6 @@
   });
 
   function onExploreChipClick(e){
-    if(!$('solveSidebar').hidden) return;
     const chip = e.target.closest('.chip');
     if(chip) removeItem(chip.getAttribute('data-side'), chip.getAttribute('data-type'));
   }
@@ -628,7 +606,7 @@
   });
 
   clearAllBtn.addEventListener('click', function(){
-    xWeight = randomWeight();
+    if(revealOverride === null) xWeight = randomWeight();
     pans.left = emptyPan();
     pans.right = emptyPan();
     revealed = false;
@@ -644,30 +622,21 @@
 
   loadPreset(PRESETS[0]);
 
-  /* ===================== Modus: Gleichung lösen (freies Wegnehmen) ===================== */
+
+  /* ===================== Modus: Gleichung eingeben ===================== */
   const tabExplore = $('tabExplore'), tabSolve = $('tabSolve');
-  const exploreSidebar = $('exploreSidebar'), solveSidebar = $('solveSidebar');
-  const panControlsRow = $('panControlsRow'), eqLine = $('eqLine');
+  const eqBlock = $('eqBlock'), subExplore = $('subExplore');
   const eqForm = $('eqForm'), eqInput = $('eqInput'), eqError = $('eqError');
-  const examplesEl = $('examples'), solveTools = $('solveTools'), log = $('log');
-  const divSelect = $('divSelect'), divBtn = $('divBtn');
-  const undoBtn = $('undoBtn'), hintBtn = $('hintBtn'), restartBtn = $('restartBtn');
-  const hintText = $('hintText');
+  const examplesEl = $('examples');
 
   const EXAMPLES = ['x + 5 = 9', '2x + 3 = 11', '3x + 5 = x + 11', '4x + 2 = 2x + 10', 'x + 12 = 3x + 4', '5x = 2x + 9'];
-  const EPS = 1e-9;
 
-  // state = { L: pan, R: pan }; pan = { x, 1, 2, 5, 10, f, fr:{n,k}|null }
-  let solution = 1;      // wahres Gewicht von x
-  let solFrac = { n: 0, k: 1 };
-  let startState = null;
-  let state = null;
-  let history = [];      // Schnappschüsse: { state, text }
-  let steps = [];        // Protokoll-Texte
+  let solving = false;
+  // Zustand des jeweils anderen Modus
+  let saved = { xWeight: 1, pans: { left: emptyPan(), right: emptyPan() }, revealed: false, override: '' };
 
   function gcd(a, b){ return b ? gcd(b, a % b) : Math.abs(a); }
   function fmtFrac(r){ return r.k === 1 ? String(r.n) : r.n + '/' + r.k; }
-  function clone(o){ return JSON.parse(JSON.stringify(o)); }
 
   function decompose(n){
     const p = emptyPan();
@@ -677,24 +646,9 @@
     });
     return p;
   }
-  function intTotal(p){ return p['1'] + 2 * p['2'] + 5 * p['5'] + 10 * p['10']; }
-  function hasFrac(p){ return !!p.fr; }
-  function constText(p){
-    if(p.fr) return fmtFrac(p.fr);
-    return String(intTotal(p));
-  }
-  function panText(p){
-    const parts = [];
-    if(p.x > 0) parts.push((p.x === 1 ? '' : p.x) + 'x');
-    if(p.fr || intTotal(p) > 0 || p.x === 0) parts.push(constText(p));
-    return parts.join(' + ');
-  }
-  function weight(p){ return panWeight(p, solution); }
-  function balanced(s){ return Math.abs(weight(s.L) - weight(s.R)) < EPS; }
-
   function makePan(x, n){
     const p = decompose(n);
-    p.x = x; p.f = 0; p.fr = null;
+    p.x = x;
     return p;
   }
 
@@ -727,193 +681,40 @@
     return { L: L, R: R };
   }
 
-  function isDone(s){
-    if(!balanced(s)) return false;
-    const xl = s.L.x === 1 && intTotal(s.L) === 0 && !s.L.fr && s.R.x === 0;
-    const xr = s.R.x === 1 && intTotal(s.R) === 0 && !s.R.fr && s.L.x === 0;
-    return xl || xr;
-  }
-
-  function showHint(msg){
-    hintText.textContent = msg || '';
-    hintText.hidden = !msg;
-  }
-
-  function refresh(){
-    const done = isDone(state);
-    const bal = balanced(state);
-    eqLine.hidden = false;
-    eqLine.classList.toggle('done', done);
-    if(done){
-      eqLine.textContent = 'x = ' + fmtFrac(solFrac);
-    } else {
-      eqLine.textContent = panText(state.L) + (bal ? ' = ' : ' ≠ ') + panText(state.R);
-    }
-    const instr = document.createElement('span');
-    instr.className = 'instr';
-    if(done) instr.textContent = 'Geschafft! x steht allein und die Waage ist im Gleichgewicht.';
-    else if(!bal) instr.textContent = 'Die Waage kippt – ' + (weight(state.L) > weight(state.R) ? 'links' : 'rechts') + ' ist jetzt schwerer. Das ist keine gültige Umformung mehr. Mach den Schritt rückgängig oder gleiche es aus.';
-    else instr.textContent = 'Im Gleichgewicht. Nimm gleich viel von beiden Seiten weg oder teile beide Seiten.';
-    eqLine.appendChild(instr);
-
-    log.innerHTML = '';
-    steps.forEach(function(t, i){
-      const li = document.createElement('li');
-      if(i === steps.length - 1) li.className = 'now';
-      li.textContent = t;
-      log.appendChild(li);
-    });
-
-    undoBtn.disabled = history.length === 0;
-    solveTools.hidden = false;
-    draw(state.L, state.R, solution, {
-      left: state.L.fr ? fmtFrac(state.L.fr) : '',
-      right: state.R.fr ? fmtFrac(state.R.fr) : ''
-    });
-  }
-
-  function commit(next, text, hint){
-    history.push({ state: state, text: steps.slice() });
-    state = next;
-    steps.push(text);
-    showHint(hint || '');
-    refresh();
-  }
-
   function startEquation(raw){
     eqError.hidden = true;
-    const fail = function(msg){
-      eqError.textContent = msg; eqError.hidden = false;
-      solveTools.hidden = true; eqLine.hidden = true; log.innerHTML = '';
-      state = null; history = []; steps = [];
-      draw(emptyPan(), emptyPan(), 1);
-    };
     const r = parseEquation(raw);
-    if(r.err){ fail(r.err); return; }
-    const A = r.L.x - r.R.x, B = r.R.n - r.L.n;
-    if(A === 0){
-      fail(B === 0 ? 'Diese Gleichung stimmt für jedes x – es gibt unendlich viele Lösungen, die Waage ist immer im Gleichgewicht.'
-                   : 'Diese Gleichung hat keine Lösung – die Waage kann nie im Gleichgewicht sein.');
-      return;
+    let msg = r.err || null;
+    let A = 0, B = 0;
+    if(!msg){
+      A = r.L.x - r.R.x; B = r.R.n - r.L.n;
+      if(A === 0) msg = B === 0 ? 'Diese Gleichung stimmt für jedes x – es gibt unendlich viele Lösungen, die Waage ist immer im Gleichgewicht.'
+                                : 'Diese Gleichung hat keine Lösung – die Waage kann nie im Gleichgewicht sein.';
+      else if(B / A < 0) msg = 'Die Lösung wäre negativ. Das geht mit dieser Waage nicht, denn Gewichte können nicht negativ sein.';
     }
-    if(B / A < 0){ fail('Die Lösung wäre negativ. Das geht mit dieser Waage nicht, denn Gewichte können nicht negativ sein.'); return; }
-    solution = B / A;
+    if(msg){ eqError.textContent = msg; eqError.hidden = false; return; }
     const g = gcd(Math.abs(B), Math.abs(A)) || 1;
-    solFrac = { n: Math.abs(B) / g, k: Math.abs(A) / g };
-    startState = { L: makePan(r.L.x, r.L.n), R: makePan(r.R.x, r.R.n) };
-    state = clone(startState);
-    history = [];
-    steps = ['Startgleichung: ' + panText(state.L) + ' = ' + panText(state.R)];
-    showHint('');
-    refresh();
+    xWeight = B / A;
+    revealOverride = fmtFrac({ n: Math.abs(B) / g, k: Math.abs(A) / g });
+    pans.left = makePan(r.L.x, r.L.n);
+    pans.right = makePan(r.R.x, r.R.n);
+    revealed = false;
+    render();
   }
 
-  // --- Einzelnes Plättchen entfernen (nur eine Seite → Waage kippt) ---
-  function onChipClick(e){
-    if(solveSidebar.hidden || !state) return;
-    const chip = e.target.closest('.chip');
-    if(!chip) return;
-    const side = chip.getAttribute('data-side') === 'left' ? 'L' : 'R';
-    const type = chip.getAttribute('data-type');
-    const next = clone(state);
-    const p = next[side];
-    let label;
-    if(type === 'f'){ p.f = 0; p.fr = null; label = fmtFrac(state[side].fr); }
-    else if(p[type] > 0){ p[type]--; label = type === 'x' ? 'x' : type; }
-    else return;
-    const text = (side === 'L' ? 'Links' : 'Rechts') + ' ' + label + ' weggenommen.';
-    commit(next, text, '');
-  }
-
-  // --- Auf beiden Seiten wegnehmen ---
-  function takeBoth(type){
-    if(!state) return;
-    const next = clone(state);
-    if(type === 'x'){
-      if(next.L.x < 1 || next.R.x < 1){ showHint('Dafür muss auf beiden Seiten mindestens ein x liegen.'); return; }
-      next.L.x--; next.R.x--;
-      commit(next, 'Beide Seiten: 1 x weggenommen.');
-      return;
-    }
-    const v = parseInt(type, 10);
-    if(hasFrac(next.L) || hasFrac(next.R)){ showHint('Mit Bruch-Gewichten geht das nur durch Anklicken einzelner Plättchen.'); return; }
-    if(intTotal(next.L) < v || intTotal(next.R) < v){ showHint('Auf einer Seite liegt nicht genug Gewicht (mindestens ' + v + ' nötig).'); return; }
-    ['L', 'R'].forEach(function(s){
-      const p = decompose(intTotal(next[s]) - v);
-      p.x = next[s].x; p.f = 0; p.fr = null;
-      next[s] = p;
-    });
-    commit(next, 'Beide Seiten: ' + v + ' weggenommen.');
-  }
-
-  // --- Beide Seiten teilen ---
-  function divideBoth(){
-    if(!state) return;
-    const k = parseInt(divSelect.value, 10);
-    if(state.L.x % k !== 0 || state.R.x % k !== 0){
-      showHint('Die x-Blöcke lassen sich nicht in ' + k + ' gleiche Gruppen aufteilen (auf jeder Seite muss die Anzahl durch ' + k + ' teilbar sein).');
-      return;
-    }
-    const next = clone(state);
-    ['L', 'R'].forEach(function(s){
-      const p = next[s];
-      const num = p.fr ? intTotal(p) * p.fr.k + p.fr.n : intTotal(p);
-      const den = p.fr ? p.fr.k : 1;
-      const g = gcd(num, den * k) || 1;
-      const n = num / g, d = den * k / g;
-      const nx = p.x / k;
-      const q = d === 1 ? decompose(n) : emptyPan();
-      q.x = nx;
-      if(d === 1){ q.f = 0; q.fr = null; }
-      else { q.f = n / d; q.fr = { n: n, k: d }; }
-      next[s] = q;
-    });
-    commit(next, 'Beide Seiten durch ' + k + ' geteilt.');
-  }
-
-  function undo(){
-    if(!history.length) return;
-    const h = history.pop();
-    state = h.state;
-    steps = h.text;
-    showHint('');
-    refresh();
-  }
-
-  function giveHint(){
-    if(!state) return;
-    if(!balanced(state)){ showHint('Die Waage kippt. Mach den letzten Schritt rückgängig – es muss auf beiden Seiten gleich viel passieren.'); return; }
-    if(isDone(state)){ showHint('Du bist fertig!'); return; }
-    const L = state.L, R = state.R;
-    if(L.x > 0 && R.x > 0) showHint('Tipp: Auf beiden Seiten liegen x-Blöcke. Nimm auf beiden Seiten ein x weg.');
-    else if(intTotal(L) > 0 && intTotal(R) > 0 && !L.fr && !R.fr) showHint('Tipp: Auf beiden Seiten liegen Gewichte. Nimm auf beiden Seiten gleich viel davon weg.');
-    else if(Math.max(L.x, R.x) > 1) showHint('Tipp: Teile beide Seiten durch ' + Math.max(L.x, R.x) + ', damit nur ein x übrig bleibt.');
-    else showHint('Tipp: Bring x allein auf eine Seite, ohne dass die Waage kippt.');
-  }
-
-  function restart(){
-    if(!startState) return;
-    state = clone(startState);
-    history = [];
-    steps = ['Startgleichung: ' + panText(state.L) + ' = ' + panText(state.R)];
-    showHint('');
-    refresh();
-  }
-
-  function setMode(m){
-    const solving = m === 'solve';
+  function setMode(toSolve){
+    if(toSolve === solving) return;
+    const cur = { xWeight: xWeight, pans: pans, revealed: revealed, override: revealOverride };
+    xWeight = saved.xWeight; pans = saved.pans; revealed = saved.revealed; revealOverride = saved.override;
+    saved = cur;
+    solving = toSolve;
     tabExplore.setAttribute('aria-selected', String(!solving));
     tabSolve.setAttribute('aria-selected', String(solving));
-    exploreSidebar.hidden = solving;
-    solveSidebar.hidden = !solving;
-    panControlsRow.hidden = solving;
-    if(solving){
-      if(state) refresh();
-      else { eqLine.hidden = true; draw(emptyPan(), emptyPan(), 1); }
-    } else {
-      eqLine.hidden = true;
-      render();
-    }
+    eqBlock.hidden = !solving;
+    subExplore.hidden = solving;
+    newExampleBtn.hidden = solving;
+    eqError.hidden = true;
+    render();
   }
 
   EXAMPLES.forEach(function(t){
@@ -922,23 +723,9 @@
     b.addEventListener('click', function(){ eqInput.value = t; startEquation(t); });
     examplesEl.appendChild(b);
   });
-  for(let k = 2; k <= 12; k++){
-    const o = document.createElement('option');
-    o.value = String(k); o.textContent = String(k);
-    divSelect.appendChild(o);
-  }
 
-  document.querySelectorAll('[data-both]').forEach(function(btn){
-    btn.addEventListener('click', function(){ takeBoth(btn.getAttribute('data-both')); });
-  });
-  divBtn.addEventListener('click', divideBoth);
-  undoBtn.addEventListener('click', undo);
-  hintBtn.addEventListener('click', giveHint);
-  restartBtn.addEventListener('click', restart);
-  trayLeft.addEventListener('click', onChipClick);
-  trayRight.addEventListener('click', onChipClick);
-  tabExplore.addEventListener('click', function(){ setMode('explore'); });
-  tabSolve.addEventListener('click', function(){ setMode('solve'); eqInput.focus(); });
+  tabExplore.addEventListener('click', function(){ setMode(false); });
+  tabSolve.addEventListener('click', function(){ setMode(true); eqInput.focus(); });
   eqForm.addEventListener('submit', function(e){ e.preventDefault(); startEquation(eqInput.value); });
 })();
 </script>
