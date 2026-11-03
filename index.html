@@ -18,6 +18,8 @@
     --mathe-soft: #e6eefc;
     --physik: #d9602b;
     --physik-soft: #fcebe3;
+    --vertretung: #2a9461;
+    --vertretung-soft: #e2f4ea;
     --shadow: 0 1px 3px rgba(0,0,0,.08), 0 4px 14px rgba(0,0,0,.05);
   }
   @media (prefers-color-scheme: dark) {
@@ -30,6 +32,8 @@
       --mathe-soft: #1f2d46;
       --physik: #f08a5d;
       --physik-soft: #3a261d;
+      --vertretung: #5cc794;
+      --vertretung-soft: #1b3328;
       --shadow: 0 1px 3px rgba(0,0,0,.4);
     }
   }
@@ -66,6 +70,7 @@
   }
   .mathe h2 .icon { background: var(--mathe); }
   .physik h2 .icon { background: var(--physik); }
+  .vertretung h2 .icon { background: var(--vertretung); }
 
   .gruppe { margin-bottom: 14px; }
   .gruppe:last-child { margin-bottom: 0; }
@@ -86,6 +91,8 @@
   .btn small { display: block; font-weight: 400; font-size: .82rem; opacity: .8; margin-top: 2px; }
   .mathe .btn  { background: var(--mathe-soft);  color: var(--mathe);  }
   .physik .btn { background: var(--physik-soft); color: var(--physik); }
+  .vertretung .btn { background: var(--vertretung-soft); color: var(--vertretung); }
+  .vertretung .btn:hover { border-color: var(--vertretung); transform: translateY(-2px); }
   .mathe .btn:hover  { border-color: var(--mathe);  transform: translateY(-2px); }
   .physik .btn:hover { border-color: var(--physik); transform: translateY(-2px); }
   .btn:focus-visible { outline: 3px solid var(--text); outline-offset: 2px; }
@@ -164,11 +171,21 @@ const PHYSIK = [
   }
 ];
 
+const VERTRETUNG = [
+  {
+    titel: "Meine Materialien",
+    links: [
+      { name: "Vertretungsstunden-Spiele", url: "https://lenakaeck.github.io/Vertretungsstunden-Spiele/", info: "Unabhängig vom Fach" },
+    ]
+  }
+];
+
 /* ================ Ab hier nichts ändern ================ */
 
 const FAECHER = [
   { id: "mathe",  titel: "Mathematik", kuerzel: "∑", gruppen: MATHEMATIK },
   { id: "physik", titel: "Physik",     kuerzel: "⚛", gruppen: PHYSIK },
+  { id: "vertretung", titel: "Vertretungsstunden", kuerzel: "V", gruppen: VERTRETUNG },
 ];
 
 function esc(s) {
